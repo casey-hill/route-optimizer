@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
-  <title>Route Optimizer</title>
+  <title>StopLoop</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script>
     (() => {
@@ -141,6 +141,19 @@
       margin: 0 0 4px;
       font-size: clamp(28px, 4vw, 46px);
       letter-spacing: -0.04em;
+    }
+    .brand-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .version {
+      color: var(--cp-text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     .subtitle {
       margin: 0;
@@ -659,7 +672,10 @@
     <header>
       <div class="hero">
         <div>
-          <h1>Route Optimizer</h1>
+          <div class="brand-line">
+            <h1>StopLoop</h1>
+            <span class="version">v0.2.0</span>
+          </div>
           <p class="subtitle">A multi-stop planner for up to 20 stops. Add addresses, click the local map, import a batch, optimize the visit order, then copy or export the itinerary.</p>
         </div>
         <div class="pillbar" aria-label="Capabilities">

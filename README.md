@@ -1,6 +1,6 @@
-﻿# Route Optimizer
+﻿# StopLoop
 
-Single-page route optimizer with address lookup, favorites, voice entry, and GitHub Pages hosting.
+Mobile-friendly multi-stop route planner with address lookup, favorites, voice entry, and GitHub Pages hosting.
 
-Published with GitHub Pages.
+Current version: v0.2.0
 
