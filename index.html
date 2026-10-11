@@ -214,6 +214,12 @@
       flex-wrap: wrap;
       gap: 8px;
     }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
     .muted {
       color: var(--cp-text-muted);
       font-size: 13px;
@@ -235,6 +241,22 @@
       line-height: 1.4;
     }
     .notice strong { color: var(--cp-text); }
+    .mobile-round-card {
+      display: none;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+      border-radius: 16px;
+      padding: 12px;
+      gap: 10px;
+    }
+    .mobile-round-card strong {
+      display: block;
+      font-size: 16px;
+    }
+    .mobile-round-card .primary {
+      width: 100%;
+      border: 0;
+    }
     .voice-panel {
       border: 1px solid var(--cp-border);
       background: var(--cp-bg-elevated);
@@ -522,6 +544,9 @@
         display: grid;
         grid-template-columns: 1fr;
       }
+      .mobile-round-card {
+        display: grid;
+      }
       #add-demo,
       #tab-import {
         display: none;
@@ -534,6 +559,20 @@
       }
       .grid2 {
         grid-template-columns: 1fr;
+      }
+      #stop-form { order: 1; }
+      .mobile-round-card { order: 2; }
+      #stops-empty,
+      .stop-list {
+        order: 3;
+      }
+      .favorites-panel { order: 4; }
+      .voice-panel { order: 5; }
+      #import-panel { order: 6; }
+      .stop-list {
+        max-height: 280px;
+        overflow-y: auto;
+        padding-right: 2px;
       }
       .favorites-head,
       .voice-head {
@@ -567,14 +606,14 @@
         width: 100%;
       }
       .map-wrap {
-        min-height: 320px;
+        min-height: 180px;
         padding: 10px;
       }
       .map,
       .map-fallback {
-        min-height: 320px;
-        height: 42vh;
-        max-height: 460px;
+        min-height: 180px;
+        height: 24vh;
+        max-height: 240px;
         border-radius: 12px;
       }
       .stats {
@@ -609,8 +648,8 @@
       }
       .map,
       .map-fallback {
-        height: 38vh;
-        min-height: 300px;
+        height: 22vh;
+        min-height: 168px;
       }
     }
   </style>
@@ -657,6 +696,17 @@
             <div id="geocode-status" class="status-line" role="status" aria-live="polite"></div>
             <p class="muted">Type an address and add it. The app looks up the location automatically.</p>
           </form>
+
+          <div class="mobile-round-card" aria-label="Mobile route action">
+            <div class="row">
+              <div>
+                <strong><span id="mobile-round-stops">0</span> stops in route</strong>
+                <div id="mobile-round-status" class="muted">Add at least 3 stops to optimize a round trip.</div>
+              </div>
+              <span id="mobile-round-distance" class="pill">0 mi</span>
+            </div>
+            <button id="optimize-round" class="primary" type="button">Optimize round trip</button>
+          </div>
 
           <div class="favorites-panel" aria-labelledby="favorites-title">
             <div class="favorites-head">
@@ -814,6 +864,10 @@
       map: document.getElementById("map"),
       mode: document.getElementById("route-mode"),
       optimize: document.getElementById("optimize"),
+      optimizeRound: document.getElementById("optimize-round"),
+      mobileRoundStops: document.getElementById("mobile-round-stops"),
+      mobileRoundDistance: document.getElementById("mobile-round-distance"),
+      mobileRoundStatus: document.getElementById("mobile-round-status"),
       addDemo: document.getElementById("add-demo"),
       clearStops: document.getElementById("clear-stops"),
       importPanel: document.getElementById("import-panel"),
@@ -860,6 +914,11 @@
     });
     els.clearStops.addEventListener("click", () => clearRoute());
     els.optimize.addEventListener("click", () => {
+      optimizeRoute();
+      render();
+    });
+    els.optimizeRound.addEventListener("click", () => {
+      if (els.mode.value !== "round") els.mode.value = "round";
       optimizeRoute();
       render();
     });
@@ -1277,6 +1336,7 @@
       renderStats();
       renderMapsLink();
       els.optimize.disabled = stops.length < 3;
+      els.optimizeRound.disabled = stops.length < 3;
     }
 
     function renderStops() {
@@ -1452,6 +1512,11 @@
       els.stats.distance.textContent = `${current.toFixed(1)} mi`;
       els.stats.time.textContent = minutes ? `${minutes} min` : "0 min";
       els.stats.saved.textContent = `${saved}%`;
+      els.mobileRoundStops.textContent = String(stops.length);
+      els.mobileRoundDistance.textContent = `${current.toFixed(1)} mi`;
+      els.mobileRoundStatus.textContent = stops.length < 3
+        ? "Add at least 3 stops to optimize a round trip."
+        : (optimized ? "Round trip optimized." : "Round trip ready to optimize.");
     }
 
     function renderMapsLink() {
