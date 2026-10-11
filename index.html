@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Scout Route Optimizer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    button, input, textarea, select {
+      font: inherit;
+      color: var(--cp-text);
+    }
+    button {
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      border-radius: 0.625rem;
+      cursor: pointer;
+      min-height: 36px;
+      padding: 8px 12px;
+    }
+    button:hover { border-color: var(--cp-border-strong); }
+    button.primary {
+      background: var(--cp-accent);
+      border-color: var(--cp-accent);
+      color: var(--cp-accent-fg);
+    }
+    button.primary:hover {
+      background: var(--cp-accent-hover);
+      border-color: var(--cp-accent-hover);
+    }
+    button.danger {
+      border-color: var(--cp-danger);
+      color: var(--cp-danger);
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+    input, textarea, select {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      border-radius: 0.625rem;
+      padding: 8px 10px;
+    }
+    textarea {
+      min-height: 112px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", Courier, monospace;
+    }
+    a { color: var(--cp-link); }
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+    header {
+      border-bottom: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+      padding: 20px 24px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(28px, 4vw, 46px);
+      letter-spacing: -0.04em;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--cp-text-muted);
+      max-width: 780px;
+      line-height: 1.45;
+    }
+    .pillbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .pill {
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--cp-text-muted);
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(460px, 1fr) minmax(320px, 420px);
+      gap: 16px;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px 24px 24px;
+    }
+    .card {
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      box-shadow: var(--cp-shadow);
+      overflow: hidden;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+    }
+    .card-body { padding: 16px; }
+    .stack { display: grid; gap: 12px; }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .field label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--cp-text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .muted {
+      color: var(--cp-text-muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .status-line {
+      min-height: 18px;
+      color: var(--cp-text-muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .notice {
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface-soft);
+      border-radius: 0.625rem;
+      padding: 10px;
+      color: var(--cp-text-muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .notice strong { color: var(--cp-text); }
+    .voice-panel {
+      border: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+      border-radius: 16px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .voice-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .voice-head strong { font-size: 15px; }
+    .voice-transcript {
+      min-height: 48px;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      border-radius: 0.625rem;
+      padding: 10px;
+      color: var(--cp-text);
+      line-height: 1.35;
+    }
+    .voice-transcript:empty::before {
+      content: "Nothing heard yet.";
+      color: var(--cp-text-muted);
+    }
+    .voice-panel.listening {
+      border-color: var(--cp-accent);
+      background: var(--cp-accent-soft);
+    }
+    .favorites-panel {
+      border: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+      border-radius: 16px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .favorites-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .favorites-list {
+      display: grid;
+      gap: 8px;
+    }
+    .favorite-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      border-radius: 0.625rem;
+    }
+    .favorite-name {
+      font-weight: 650;
+      line-height: 1.2;
+    }
+    .favorite-address {
+      color: var(--cp-text-muted);
+      font-size: 12px;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .stop-list, .route-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .stop-card {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+      border-radius: 0.625rem;
+    }
+    .badge {
+      display: inline-grid;
+      place-items: center;
+      min-width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--cp-accent-soft);
+      color: var(--cp-accent);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .stop-title {
+      font-weight: 650;
+      line-height: 1.2;
+    }
+    .stop-meta {
+      color: var(--cp-text-muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .mini-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .mini-actions button {
+      min-height: 30px;
+      padding: 4px 8px;
+    }
+    .map-card {
+      min-height: 620px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    .map-wrap {
+      min-height: 520px;
+      padding: 16px;
+      background: var(--cp-surface-soft);
+    }
+    .map {
+      width: 100%;
+      height: 100%;
+      min-height: 500px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface);
+      display: block;
+      overflow: hidden;
+    }
+    .leaflet-container {
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .leaflet-control-attribution {
+      color: var(--cp-text-muted);
+      background: var(--cp-panel-strong);
+    }
+    .map-fallback {
+      display: grid;
+      height: 100%;
+      min-height: 500px;
+      place-items: center;
+      padding: 20px;
+      color: var(--cp-text-muted);
+      text-align: center;
+    }
+    .marker-pin {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--cp-accent);
+      border-radius: 999px;
+      background: var(--cp-surface);
+      color: var(--cp-accent);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: var(--cp-shadow);
+    }
+    .marker-pin.depot {
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 16px;
+      border-top: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+    }
+    .stat {
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+      padding: 10px;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .stat-label {
+      color: var(--cp-text-muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .route-step {
+      border-left: 3px solid var(--cp-accent);
+      padding: 8px 10px;
+      background: var(--cp-bg-elevated);
+      border-radius: 0.625rem;
+    }
+    .route-step strong { display: block; }
+    .route-step span {
+      display: block;
+      margin-top: 3px;
+      color: var(--cp-text-muted);
+      font-size: 12px;
+    }
+    .empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--cp-text-muted);
+      border: 1px dashed var(--cp-border-strong);
+      border-radius: 0.625rem;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px;
+      background: var(--cp-surface-soft);
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+    }
+    .tabs button {
+      border: 0;
+      background: var(--cp-surface-soft);
+    }
+    .tabs button.active {
+      background: var(--cp-surface);
+      color: var(--cp-accent);
+      border: 1px solid var(--cp-border);
+    }
+    .hidden { display: none; }
+
+    @media (max-width: 1180px) {
+      main { grid-template-columns: 1fr 1fr; }
+      .map-card { grid-column: 1 / -1; order: -1; }
+    }
+    @media (max-width: 760px) {
+      header, main { padding-left: 12px; padding-right: 12px; }
+      .hero { grid-template-columns: 1fr; }
+      .pillbar { justify-content: flex-start; }
+      main { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="hero">
+        <div>
+          <h1>Scout Route Optimizer</h1>
+          <p class="subtitle">A RouteXL-style planner for up to 20 stops. Add addresses, click the local map, import a batch, optimize the visit order, then copy or export the itinerary.</p>
+        </div>
+        <div class="pillbar" aria-label="Capabilities">
+          <span class="pill">20-stop planner</span>
+          <span class="pill">Round trip or open route</span>
+          <span class="pill">Nearest-neighbor + 2-opt</span>
+          <span class="pill">Local only</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="card" aria-labelledby="stops-title">
+        <div class="card-head">
+          <h2 id="stops-title">Stops</h2>
+          <span class="pill"><span id="stop-count">0</span>/20</span>
+        </div>
+        <div class="card-body stack">
+          <div class="tabs" role="tablist" aria-label="Add stops">
+            <button id="tab-single" class="active" type="button">Single stop</button>
+            <button id="tab-import" type="button">Import</button>
+          </div>
+
+          <form id="stop-form" class="stack">
+            <div class="field">
+              <label for="stop-name">Address or label</label>
+              <input id="stop-name" autocomplete="off" placeholder="Example: 1 Microsoft Way, Redmond">
+            </div>
+            <div class="actions">
+              <button class="primary" type="submit">Add stop</button>
+              <button id="add-demo" type="button">Load demo route</button>
+              <button id="clear-stops" class="danger" type="button">Clear</button>
+            </div>
+            <div id="geocode-status" class="status-line" role="status" aria-live="polite"></div>
+            <p class="muted">Type an address and add it. The app looks up the location automatically.</p>
+          </form>
+
+          <div class="favorites-panel" aria-labelledby="favorites-title">
+            <div class="favorites-head">
+              <strong id="favorites-title">Favorite quick add</strong>
+              <span class="pill"><span id="favorite-count">0</span> saved</span>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <label for="favorite-name">Saved name</label>
+                <input id="favorite-name" autocomplete="off" placeholder="Home, office, customer">
+              </div>
+              <div class="field">
+                <label for="favorite-address">Address</label>
+                <input id="favorite-address" autocomplete="off" placeholder="2856 University Acres Dr, Orlando, FL">
+              </div>
+            </div>
+            <div class="actions">
+              <button id="save-favorite" class="primary" type="button">Save favorite</button>
+              <button id="save-current-favorite" type="button">Save typed address</button>
+            </div>
+            <div id="favorites-empty" class="empty">No favorites yet. Save a name and address above.</div>
+            <div id="favorites-list" class="favorites-list"></div>
+          </div>
+
+          <div id="voice-panel" class="voice-panel" aria-labelledby="voice-title">
+            <div class="voice-head">
+              <strong id="voice-title">Voice mode</strong>
+              <span id="voice-support" class="pill">Checking support</span>
+            </div>
+            <div id="voice-transcript" class="voice-transcript" role="status" aria-live="polite"></div>
+            <div id="voice-status" class="status-line">Say an address, then say "yes" to add it.</div>
+            <div class="actions">
+              <button id="voice-start" type="button">Start listening</button>
+              <button id="voice-stop" type="button">Stop</button>
+              <button id="voice-add" class="primary" type="button">Add heard address</button>
+              <button id="voice-retry" type="button">Retry</button>
+            </div>
+            <p class="muted">Commands: "yes" or "add it", "retry", "undo last", "optimize", "clear route", and "done". Browser microphone permission is required.</p>
+          </div>
+
+          <div id="import-panel" class="stack hidden">
+            <div class="field">
+              <label for="import-text">CSV import</label>
+              <textarea id="import-text" spellcheck="false" placeholder="1 Microsoft Way, Redmond, WA&#10;2856 University Acres Dr, Orlando, FL 32817"></textarea>
+            </div>
+            <div class="actions">
+              <button id="import-stops" class="primary" type="button">Import stops</button>
+              <button id="copy-sample" type="button">Use sample addresses</button>
+            </div>
+            <p class="muted">Paste one address per line. The first imported stop becomes the start.</p>
+          </div>
+
+          <div id="stops-empty" class="empty">No addresses yet. Add one above, import a batch, or click the map.</div>
+          <ol id="stop-list" class="stop-list"></ol>
+        </div>
+      </section>
+
+      <section class="card map-card" aria-labelledby="map-title">
+        <div class="card-head">
+          <div>
+            <h2 id="map-title">Route map</h2>
+            <p class="muted" id="map-help">Click inside the map to add a local stop.</p>
+          </div>
+          <div class="actions">
+            <label class="muted" for="route-mode">Mode</label>
+            <select id="route-mode" aria-label="Route mode">
+              <option value="round">Round trip</option>
+              <option value="open">Open route</option>
+            </select>
+          </div>
+        </div>
+        <div class="map-wrap">
+          <div id="map" class="map" role="img" aria-label="Road map with optimized route">
+            <div class="map-fallback">Loading road map...</div>
+          </div>
+        </div>
+        <div class="stats" aria-label="Route summary">
+          <div class="stat">
+            <div id="stat-stops" class="stat-value">0</div>
+            <div class="stat-label">Stops</div>
+          </div>
+          <div class="stat">
+            <div id="stat-distance" class="stat-value">0 mi</div>
+            <div class="stat-label">Estimated distance</div>
+          </div>
+          <div class="stat">
+            <div id="stat-time" class="stat-value">0 min</div>
+            <div class="stat-label">Drive estimate</div>
+          </div>
+          <div class="stat">
+            <div id="stat-saved" class="stat-value">0%</div>
+            <div class="stat-label">Optimized vs entered</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="route-title">
+        <div class="card-head">
+          <h2 id="route-title">Optimized itinerary</h2>
+          <button id="optimize" class="primary" type="button">Optimize</button>
+        </div>
+        <div class="card-body stack">
+          <div class="notice">
+            <strong>Prototype note:</strong> distance is straight-line Haversine, not live traffic or road routing. A production version would add geocoding plus a routing engine such as Azure Maps, OSRM, GraphHopper, or Google Routes.
+          </div>
+          <div class="actions">
+            <button id="copy-route" type="button">Copy itinerary</button>
+            <button id="download-csv" type="button">Download CSV</button>
+            <a id="maps-link" href="#" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+          </div>
+          <div id="route-empty" class="empty">Add at least three stops, then optimize.</div>
+          <ol id="route-list" class="route-list"></ol>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const MAX_STOPS = 20;
+    const STORAGE_KEY = "scout-route-optimizer-stops";
+    const FAVORITES_KEY = "scout-route-optimizer-favorites";
+    const demoStops = [
+      { name: "Microsoft Redmond Campus", lat: 47.6423, lng: -122.1368 },
+      { name: "Bellevue Downtown", lat: 47.6101, lng: -122.2015 },
+      { name: "University District", lat: 47.6614, lng: -122.3139 },
+      { name: "Seattle Center", lat: 47.6205, lng: -122.3493 },
+      { name: "Capitol Hill", lat: 47.6230, lng: -122.3200 },
+      { name: "Renton", lat: 47.4829, lng: -122.2171 },
+      { name: "Issaquah", lat: 47.5301, lng: -122.0326 },
+      { name: "Kirkland", lat: 47.6769, lng: -122.2060 }
+    ];
+
+    let stops = readStops();
+    let favorites = readFavorites();
+    let routeOrder = [];
+    let optimized = false;
+    let roadMap = null;
+    let markerLayer = null;
+    let routeLayer = null;
+    let recognition = null;
+    let voiceCandidate = "";
+    let voiceListening = false;
+    let lastVoicePhrase = "";
+
+    const els = {
+      form: document.getElementById("stop-form"),
+      name: document.getElementById("stop-name"),
+      geocodeStatus: document.getElementById("geocode-status"),
+      stopList: document.getElementById("stop-list"),
+      stopCount: document.getElementById("stop-count"),
+      stopsEmpty: document.getElementById("stops-empty"),
+      routeList: document.getElementById("route-list"),
+      routeEmpty: document.getElementById("route-empty"),
+      map: document.getElementById("map"),
+      mode: document.getElementById("route-mode"),
+      optimize: document.getElementById("optimize"),
+      addDemo: document.getElementById("add-demo"),
+      clearStops: document.getElementById("clear-stops"),
+      importPanel: document.getElementById("import-panel"),
+      tabSingle: document.getElementById("tab-single"),
+      tabImport: document.getElementById("tab-import"),
+      importText: document.getElementById("import-text"),
+      importStops: document.getElementById("import-stops"),
+      copySample: document.getElementById("copy-sample"),
+      copyRoute: document.getElementById("copy-route"),
+      downloadCsv: document.getElementById("download-csv"),
+      mapsLink: document.getElementById("maps-link"),
+      favoriteName: document.getElementById("favorite-name"),
+      favoriteAddress: document.getElementById("favorite-address"),
+      favoriteCount: document.getElementById("favorite-count"),
+      favoritesEmpty: document.getElementById("favorites-empty"),
+      favoritesList: document.getElementById("favorites-list"),
+      saveFavorite: document.getElementById("save-favorite"),
+      saveCurrentFavorite: document.getElementById("save-current-favorite"),
+      voicePanel: document.getElementById("voice-panel"),
+      voiceSupport: document.getElementById("voice-support"),
+      voiceTranscript: document.getElementById("voice-transcript"),
+      voiceStatus: document.getElementById("voice-status"),
+      voiceStart: document.getElementById("voice-start"),
+      voiceStop: document.getElementById("voice-stop"),
+      voiceAdd: document.getElementById("voice-add"),
+      voiceRetry: document.getElementById("voice-retry"),
+      stats: {
+        stops: document.getElementById("stat-stops"),
+        distance: document.getElementById("stat-distance"),
+        time: document.getElementById("stat-time"),
+        saved: document.getElementById("stat-saved")
+      }
+    };
+
+    els.form.addEventListener("submit", async event => {
+      event.preventDefault();
+      await addStop(els.name.value);
+    });
+    els.addDemo.addEventListener("click", () => {
+      stops = demoStops.map((stop, index) => ({ ...stop, id: makeId(index) }));
+      optimized = false;
+      routeOrder = naturalOrder();
+      saveAndRender();
+    });
+    els.clearStops.addEventListener("click", () => clearRoute());
+    els.optimize.addEventListener("click", () => {
+      optimizeRoute();
+      render();
+    });
+    els.mode.addEventListener("change", () => {
+      if (optimized) optimizeRoute();
+      render();
+    });
+    els.tabSingle.addEventListener("click", () => setTab("single"));
+    els.tabImport.addEventListener("click", () => setTab("import"));
+    els.copySample.addEventListener("click", () => {
+      els.importText.value = demoStops.map(stop => stop.name).join("\n");
+    });
+    els.importStops.addEventListener("click", () => importStops());
+    els.copyRoute.addEventListener("click", () => copyItinerary());
+    els.downloadCsv.addEventListener("click", () => downloadCsv());
+    els.saveFavorite.addEventListener("click", () => saveFavorite());
+    els.saveCurrentFavorite.addEventListener("click", () => saveCurrentAddressAsFavorite());
+    els.voiceStart.addEventListener("click", () => startVoiceMode());
+    els.voiceStop.addEventListener("click", () => stopVoiceMode("Voice mode stopped."));
+    els.voiceAdd.addEventListener("click", () => addVoiceCandidate());
+    els.voiceRetry.addEventListener("click", () => clearVoiceCandidate("Say the address again."));
+    setupVoiceMode();
+
+    function setupVoiceMode() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        els.voiceSupport.textContent = "Voice unavailable";
+        els.voiceStatus.textContent = "This browser does not support speech recognition. Typed entry still works.";
+        els.voiceStart.disabled = true;
+        els.voiceStop.disabled = true;
+        els.voiceAdd.disabled = true;
+        els.voiceRetry.disabled = true;
+        return;
+      }
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.onstart = () => {
+        voiceListening = true;
+        els.voicePanel.classList.add("listening");
+        els.voiceSupport.textContent = "Listening";
+        els.voiceStatus.textContent = "Listening. Say an address, then say yes to add it.";
+      };
+      recognition.onend = () => {
+        voiceListening = false;
+        els.voicePanel.classList.remove("listening");
+        if (els.voiceSupport.textContent === "Listening") els.voiceSupport.textContent = "Voice ready";
+      };
+      recognition.onerror = event => {
+        els.voiceStatus.textContent = `Voice error: ${event.error}. Typed entry still works.`;
+        speak("Voice mode hit an error.");
+      };
+      recognition.onresult = event => handleVoiceResult(event);
+      els.voiceSupport.textContent = "Voice ready";
+      els.voiceAdd.disabled = true;
+      els.voiceRetry.disabled = true;
+    }
+
+    function startVoiceMode() {
+      if (!recognition || voiceListening) return;
+      try {
+        recognition.start();
+      } catch (error) {
+        els.voiceStatus.textContent = "Voice mode could not start. Stop and try again.";
+      }
+    }
+
+    function stopVoiceMode(message = "Voice mode stopped.") {
+      if (recognition && voiceListening) recognition.stop();
+      voiceListening = false;
+      els.voicePanel.classList.remove("listening");
+      els.voiceSupport.textContent = recognition ? "Voice ready" : "Voice unavailable";
+      els.voiceStatus.textContent = message;
+    }
+
+    function handleVoiceResult(event) {
+      let interim = "";
+      let finalText = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const transcript = event.results[index][0].transcript.trim();
+        if (event.results[index].isFinal) finalText += transcript;
+        else interim += transcript;
+      }
+      if (interim && !finalText) {
+        els.voiceTranscript.textContent = interim;
+        return;
+      }
+      if (!finalText) return;
+      processVoicePhrase(finalText);
+    }
+
+    async function processVoicePhrase(phrase) {
+      const cleanedPhrase = cleanVoicePhrase(phrase);
+      const normalized = cleanedPhrase.toLowerCase().replace(/[.?!]+$/g, "");
+      if (!normalized) return;
+      if (normalized === lastVoicePhrase) return;
+      lastVoicePhrase = normalized;
+      window.setTimeout(() => {
+        if (lastVoicePhrase === normalized) lastVoicePhrase = "";
+      }, 1500);
+      els.voiceTranscript.textContent = cleanedPhrase;
+      if (["yes", "yeah", "yep", "add it", "add this", "add address", "correct"].includes(normalized)) {
+        await addVoiceCandidate();
+        return;
+      }
+      if (["no", "retry", "try again", "cancel"].includes(normalized)) {
+        clearVoiceCandidate("Discarded. Say the address again.");
+        speak("Discarded. Say the address again.");
+        return;
+      }
+      if (normalized === "undo" || normalized === "undo last" || normalized === "remove last") {
+        if (stops.length) deleteStop(stops.length - 1);
+        clearVoiceCandidate("Removed the last stop.");
+        speak("Removed the last stop.");
+        return;
+      }
+      if (normalized === "optimize" || normalized === "optimize route") {
+        optimizeRoute();
+        render();
+        clearVoiceCandidate("Route optimized.");
+        speak("Route optimized.");
+        return;
+      }
+      if (normalized === "clear route" || normalized === "clear all") {
+        clearRoute();
+        clearVoiceCandidate("Route cleared.");
+        speak("Route cleared.");
+        return;
+      }
+      if (normalized.startsWith("favorite ") || normalized.startsWith("add favorite ")) {
+        const favoriteName = normalized.replace(/^add favorite\s+/, "").replace(/^favorite\s+/, "").trim();
+        const favorite = favorites.find(item => item.name.toLowerCase() === favoriteName);
+        if (!favorite) {
+          els.voiceStatus.textContent = `No favorite named "${favoriteName}" was found.`;
+          return;
+        }
+        await addStopWithLabel(favorite.address, "", "", favorite.name);
+        clearVoiceCandidate(`Added favorite: ${favorite.name}.`);
+        return;
+      }
+      if (normalized === "done" || normalized === "stop listening") {
+        stopVoiceMode("Voice mode stopped.");
+        speak("Voice mode stopped.");
+        return;
+      }
+      voiceCandidate = cleanedPhrase;
+      els.voiceTranscript.textContent = voiceCandidate;
+      els.voiceStatus.textContent = `Heard: "${voiceCandidate}". Say yes to add it, or retry.`;
+      els.voiceAdd.disabled = false;
+      els.voiceRetry.disabled = false;
+      speak(`I heard ${voiceCandidate}. Say yes to add it, or retry.`);
+    }
+
+    function cleanVoicePhrase(phrase) {
+      return phrase
+        .trim()
+        .replace(/^(i heard\s+)+/i, "")
+        .replace(/\s+say yes to add it.*$/i, "")
+        .replace(/\s+or retry.*$/i, "")
+        .trim();
+    }
+
+    async function addVoiceCandidate() {
+      if (!voiceCandidate) {
+        els.voiceStatus.textContent = "No address heard yet.";
+        speak("No address heard yet.");
+        return;
+      }
+      const added = await addStop(voiceCandidate);
+      if (!added) return;
+      const addedAddress = voiceCandidate;
+      clearVoiceCandidate(`Added: ${addedAddress}. Say the next address.`);
+      speak("Added. Say the next address.");
+    }
+
+    function clearVoiceCandidate(message) {
+      voiceCandidate = "";
+      els.voiceTranscript.textContent = "";
+      els.voiceStatus.textContent = message;
+      els.voiceAdd.disabled = true;
+      els.voiceRetry.disabled = true;
+    }
+
+    function speak(message) {
+      if (!("speechSynthesis" in window)) return;
+      if (voiceListening) return;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(message));
+    }
+
+    function clearRoute() {
+      stops = [];
+      routeOrder = [];
+      optimized = false;
+      saveAndRender();
+    }
+
+    async function addStop(name, latValue, lngValue) {
+      return addStopWithLabel(name, latValue, lngValue);
+    }
+
+    async function addStopWithLabel(address, latValue, lngValue, displayName = "") {
+      const cleanAddress = address.trim();
+      const cleanDisplayName = displayName.trim();
+      if (!cleanAddress) {
+        window.alert("Type an address first.");
+        return;
+      }
+      if (stops.length >= MAX_STOPS) {
+        window.alert(`This demo caps routes at ${MAX_STOPS} stops.`);
+        return;
+      }
+      let lat = Number.parseFloat(latValue);
+      let lng = Number.parseFloat(lngValue);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        const result = await geocodeAddress(cleanAddress);
+        if (!result) return;
+        lat = result.lat;
+        lng = result.lng;
+      }
+      stops.push({ id: makeId(stops.length), name: cleanDisplayName || cleanAddress, address: cleanAddress, lat, lng });
+      routeOrder = naturalOrder();
+      optimized = false;
+      els.form.reset();
+      els.name.focus();
+      saveAndRender();
+      return true;
+    }
+
+    async function geocodeAddress(address) {
+      setGeocodeBusy(true, `Finding "${address}"...`);
+      try {
+        const result = await geocodeWithOpenStreetMap(address) || await geocodeWithArcGis(address);
+        if (!result) {
+          els.geocodeStatus.textContent = "";
+          window.alert(`I couldn't find "${address}". Try a more specific address.`);
+          return null;
+        }
+        els.geocodeStatus.textContent = `Found: ${result.label || address}`;
+        window.setTimeout(() => {
+          if (els.geocodeStatus.textContent.startsWith("Found:")) els.geocodeStatus.textContent = "";
+        }, 2500);
+        return result;
+      } catch (error) {
+        console.error("Address lookup failed.", error);
+        els.geocodeStatus.textContent = "";
+        window.alert("Address lookup failed. Check your connection or try a more specific address.");
+        return null;
+      } finally {
+        setGeocodeBusy(false);
+      }
+    }
+
+    async function geocodeWithOpenStreetMap(address) {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("limit", "1");
+      url.searchParams.set("q", address);
+      const response = await fetch(url.toString(), {
+        headers: { "Accept": "application/json" }
+      });
+      if (!response.ok) return null;
+      const matches = await response.json();
+      const first = Array.isArray(matches) ? matches[0] : null;
+      if (!first) return null;
+      return {
+        lat: Number.parseFloat(first.lat),
+        lng: Number.parseFloat(first.lon),
+        label: first.display_name || address
+      };
+    }
+
+    async function geocodeWithArcGis(address) {
+      const url = new URL("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates");
+      url.searchParams.set("SingleLine", address);
+      url.searchParams.set("f", "json");
+      url.searchParams.set("maxLocations", "1");
+      url.searchParams.set("outFields", "Match_addr,Addr_type,Score");
+      const response = await fetch(url.toString(), {
+        headers: { "Accept": "application/json" }
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      const candidate = Array.isArray(result.candidates) ? result.candidates[0] : null;
+      if (!candidate || !candidate.location || candidate.score < 80) return null;
+      return {
+        lat: Number.parseFloat(candidate.location.y),
+        lng: Number.parseFloat(candidate.location.x),
+        label: candidate.address || address
+      };
+    }
+
+    function setGeocodeBusy(isBusy, message = "") {
+      els.form.querySelector('button[type="submit"]').disabled = isBusy;
+      els.geocodeStatus.textContent = message;
+    }
+
+    async function importStops() {
+      const rows = els.importText.value.split(/\r?\n/).map(row => row.trim()).filter(Boolean);
+      let rejected = 0;
+      const parsed = [];
+      for (const row of rows) {
+        const parts = row.split(",").map(part => part.trim());
+        const possibleLng = Number.parseFloat(parts[parts.length - 1]);
+        const possibleLat = Number.parseFloat(parts[parts.length - 2]);
+        if (parts.length >= 3 && Number.isFinite(possibleLat) && Number.isFinite(possibleLng)) {
+          parts.pop();
+          parts.pop();
+          const name = parts.join(",").trim();
+          if (!name) {
+            rejected += 1;
+            continue;
+          }
+          parsed.push({ name, lat: possibleLat, lng: possibleLng });
+        } else {
+          const result = await geocodeAddress(row);
+          if (!result) {
+            rejected += 1;
+            continue;
+          }
+          parsed.push({ name: row, lat: result.lat, lng: result.lng });
+        }
+        if (parsed.length >= MAX_STOPS) break;
+      }
+      stops = parsed.slice(0, MAX_STOPS).map((stop, index) => ({ ...stop, id: makeId(index) }));
+      routeOrder = naturalOrder();
+      optimized = false;
+      saveAndRender();
+      if (rejected || parsed.length > MAX_STOPS) {
+        window.alert(`Imported ${stops.length} stops. Ignored ${rejected + Math.max(0, parsed.length - MAX_STOPS)} rows.`);
+      }
+    }
+
+    function optimizeRoute() {
+      if (stops.length < 3) {
+        routeOrder = naturalOrder();
+        optimized = false;
+        return;
+      }
+      const openRoute = els.mode.value === "open";
+      routeOrder = twoOpt(nearestNeighbor(openRoute), openRoute);
+      optimized = true;
+    }
+
+    function nearestNeighbor(openRoute) {
+      const remaining = new Set(stops.map((_, index) => index));
+      const order = [0];
+      remaining.delete(0);
+      while (remaining.size) {
+        const last = order[order.length - 1];
+        let best = null;
+        let bestDistance = Number.POSITIVE_INFINITY;
+        for (const candidate of remaining) {
+          const distance = distanceMiles(stops[last], stops[candidate]);
+          if (distance < bestDistance) {
+            best = candidate;
+            bestDistance = distance;
+          }
+        }
+        order.push(best);
+        remaining.delete(best);
+      }
+      return openRoute ? order : order.concat(0);
+    }
+
+    function twoOpt(order, openRoute) {
+      let best = order.slice();
+      let improved = true;
+      let guard = 0;
+      while (improved && guard < 60) {
+        improved = false;
+        guard += 1;
+        const end = openRoute ? best.length - 1 : best.length - 2;
+        for (let i = 1; i < end; i += 1) {
+          for (let k = i + 1; k <= end; k += 1) {
+            const candidate = best.slice(0, i).concat(best.slice(i, k + 1).reverse(), best.slice(k + 1));
+            if (routeDistance(candidate) < routeDistance(best)) {
+              best = candidate;
+              improved = true;
+            }
+          }
+        }
+      }
+      return best;
+    }
+
+    function routeDistance(order) {
+      let total = 0;
+      for (let i = 1; i < order.length; i += 1) {
+        total += distanceMiles(stops[order[i - 1]], stops[order[i]]);
+      }
+      return total;
+    }
+
+    function distanceMiles(a, b) {
+      const earthMiles = 3958.8;
+      const dLat = toRad(b.lat - a.lat);
+      const dLng = toRad(b.lng - a.lng);
+      const lat1 = toRad(a.lat);
+      const lat2 = toRad(b.lat);
+      const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      return 2 * earthMiles * Math.asin(Math.sqrt(h));
+    }
+
+    function render() {
+      if (!routeOrder.length && stops.length) routeOrder = naturalOrder();
+      els.stopCount.textContent = String(stops.length);
+      renderStops();
+      renderFavorites();
+      renderMap();
+      renderRoute();
+      renderStats();
+      renderMapsLink();
+      els.optimize.disabled = stops.length < 3;
+    }
+
+    function renderStops() {
+      els.stopList.innerHTML = "";
+      els.stopsEmpty.classList.toggle("hidden", stops.length > 0);
+      stops.forEach((stop, index) => {
+        const li = document.createElement("li");
+        li.className = "stop-card";
+        li.innerHTML = `
+          <span class="badge">${index === 0 ? "S" : index + 1}</span>
+          <div>
+            <div class="stop-title"></div>
+            <div class="stop-meta">${index === 0 ? "Starting point" : `Stop ${index + 1}`}</div>
+          </div>
+          <div class="mini-actions">
+            <button type="button" data-stop-action="up" aria-label="Move stop up">Up</button>
+            <button type="button" data-stop-action="down" aria-label="Move stop down">Dn</button>
+            <button type="button" data-stop-action="delete" aria-label="Delete stop">X</button>
+          </div>`;
+        li.querySelector(".stop-title").textContent = stop.name;
+        li.querySelector('[data-stop-action="up"]').disabled = index === 0;
+        li.querySelector('[data-stop-action="down"]').disabled = index === stops.length - 1;
+        li.querySelector('[data-stop-action="up"]').addEventListener("click", () => moveStop(index, -1));
+        li.querySelector('[data-stop-action="down"]').addEventListener("click", () => moveStop(index, 1));
+        li.querySelector('[data-stop-action="delete"]').addEventListener("click", () => deleteStop(index));
+        els.stopList.appendChild(li);
+      });
+    }
+
+    function renderFavorites() {
+      els.favoriteCount.textContent = String(favorites.length);
+      els.favoritesList.innerHTML = "";
+      els.favoritesEmpty.classList.toggle("hidden", favorites.length > 0);
+      favorites.forEach((favorite, index) => {
+        const row = document.createElement("div");
+        row.className = "favorite-card";
+        row.innerHTML = `
+          <div>
+            <div class="favorite-name"></div>
+            <div class="favorite-address"></div>
+          </div>
+          <div class="mini-actions">
+            <button type="button" data-favorite-action="add">Add</button>
+            <button type="button" data-favorite-action="delete">X</button>
+          </div>`;
+        row.querySelector(".favorite-name").textContent = favorite.name;
+        row.querySelector(".favorite-address").textContent = favorite.address;
+        row.querySelector('[data-favorite-action="add"]').addEventListener("click", () => addFavoriteToRoute(index));
+        row.querySelector('[data-favorite-action="delete"]').addEventListener("click", () => deleteFavorite(index));
+        els.favoritesList.appendChild(row);
+      });
+    }
+
+    function saveFavorite() {
+      const name = els.favoriteName.value.trim();
+      const address = els.favoriteAddress.value.trim();
+      if (!name || !address) {
+        window.alert("Add both a saved name and an address.");
+        return;
+      }
+      const existingIndex = favorites.findIndex(favorite => favorite.name.toLowerCase() === name.toLowerCase());
+      const favorite = { id: makeId(favorites.length), name, address };
+      if (existingIndex >= 0) favorites[existingIndex] = { ...favorites[existingIndex], name, address };
+      else favorites.push(favorite);
+      els.favoriteName.value = "";
+      els.favoriteAddress.value = "";
+      saveFavorites();
+      renderFavorites();
+    }
+
+    function saveCurrentAddressAsFavorite() {
+      const address = els.name.value.trim();
+      if (!address) {
+        window.alert("Type an address first, then save it as a favorite.");
+        return;
+      }
+      els.favoriteAddress.value = address;
+      if (!els.favoriteName.value.trim()) els.favoriteName.focus();
+    }
+
+    async function addFavoriteToRoute(index) {
+      const favorite = favorites[index];
+      if (!favorite) return;
+      await addStopWithLabel(favorite.address, "", "", favorite.name);
+    }
+
+    function deleteFavorite(index) {
+      favorites.splice(index, 1);
+      saveFavorites();
+      renderFavorites();
+    }
+
+    function renderRoute() {
+      const routeStops = routeOrder.map(index => stops[index]).filter(Boolean);
+      els.routeList.innerHTML = "";
+      els.routeEmpty.classList.toggle("hidden", routeStops.length >= 3);
+      routeStops.forEach((stop, index) => {
+        const prev = routeStops[index - 1];
+        const leg = prev ? distanceMiles(prev, stop) : 0;
+        const li = document.createElement("li");
+        li.className = "route-step";
+        const label = index === 0 ? "Start" : (index === routeStops.length - 1 && stop === routeStops[0] ? "Return" : `Stop ${index}`);
+        li.innerHTML = `<strong></strong><span></span>`;
+        li.querySelector("strong").textContent = `${label}: ${stop.name}`;
+        li.querySelector("span").textContent = index === 0 ? "Begin here." : `${leg.toFixed(1)} mi from previous stop.`;
+        els.routeList.appendChild(li);
+      });
+    }
+
+    function renderMap() {
+      if (!roadMap) initRoadMap();
+      if (!roadMap) return;
+      markerLayer.clearLayers();
+      routeLayer.clearLayers();
+      if (!stops.length) {
+        roadMap.setView([39.5, -98.35], 4);
+        return;
+      }
+      const bounds = [];
+      const routeStops = (routeOrder.length ? routeOrder : naturalOrder()).map(index => stops[index]).filter(Boolean);
+      if (routeStops.length > 1) {
+        L.polyline(routeStops.map(stop => [stop.lat, stop.lng]), {
+          color: getThemeValue("--cp-accent"),
+          weight: 5,
+          opacity: 0.92
+        }).addTo(routeLayer);
+      }
+      stops.forEach((stop, index) => {
+        const latLng = [stop.lat, stop.lng];
+        bounds.push(latLng);
+        L.marker(latLng, { icon: markerIcon(index === 0 ? "S" : String(index + 1), index === 0) })
+          .bindPopup(`<strong>${escapeHtml(stop.name)}</strong>`)
+          .addTo(markerLayer);
+      });
+      roadMap.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
+    }
+
+    function renderStats() {
+      const baseline = routeDistance(naturalOrder(els.mode.value === "round"));
+      const current = routeDistance(routeOrder.length ? routeOrder : naturalOrder(els.mode.value === "round"));
+      const saved = baseline > 0 ? Math.max(0, Math.round(((baseline - current) / baseline) * 100)) : 0;
+      const minutes = Math.round((current / 35) * 60);
+      els.stats.stops.textContent = String(stops.length);
+      els.stats.distance.textContent = `${current.toFixed(1)} mi`;
+      els.stats.time.textContent = minutes ? `${minutes} min` : "0 min";
+      els.stats.saved.textContent = `${saved}%`;
+    }
+
+    function renderMapsLink() {
+      const active = (routeOrder.length ? routeOrder : naturalOrder()).map(index => stops[index]).filter(Boolean);
+      if (active.length < 2) {
+        els.mapsLink.removeAttribute("href");
+        els.mapsLink.textContent = "Open in Google Maps";
+        return;
+      }
+      const origin = coord(active[0]);
+      const destination = coord(active[active.length - 1]);
+      const waypoints = active.slice(1, -1).map(coord).join("|");
+      const url = new URL("https://www.google.com/maps/dir/");
+      url.searchParams.set("api", "1");
+      url.searchParams.set("origin", origin);
+      url.searchParams.set("destination", destination);
+      if (waypoints) url.searchParams.set("waypoints", waypoints);
+      els.mapsLink.href = url.toString();
+      els.mapsLink.textContent = "Open in Google Maps";
+    }
+
+    function moveStop(index, delta) {
+      const target = index + delta;
+      if (target < 0 || target >= stops.length) return;
+      [stops[index], stops[target]] = [stops[target], stops[index]];
+      routeOrder = naturalOrder();
+      optimized = false;
+      saveAndRender();
+    }
+
+    function deleteStop(index) {
+      stops.splice(index, 1);
+      routeOrder = naturalOrder();
+      optimized = false;
+      saveAndRender();
+    }
+
+    function initRoadMap() {
+      if (!window.L) {
+        els.map.innerHTML = '<div class="map-fallback">Road map could not load. Check your connection and refresh.</div>';
+        return;
+      }
+      els.map.innerHTML = "";
+      roadMap = L.map(els.map, {
+        zoomControl: true,
+        scrollWheelZoom: true
+      }).setView([39.5, -98.35], 4);
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener noreferrer">Esri</a>'
+      }).addTo(roadMap);
+      markerLayer = L.layerGroup().addTo(roadMap);
+      routeLayer = L.layerGroup().addTo(roadMap);
+      roadMap.on("click", event => {
+        if (stops.length >= MAX_STOPS) return;
+        addStop(`Dropped stop ${stops.length + 1}`, event.latlng.lat.toFixed(5), event.latlng.lng.toFixed(5));
+      });
+      window.setTimeout(() => roadMap.invalidateSize(), 100);
+    }
+
+    function markerIcon(label, isDepot) {
+      return L.divIcon({
+        className: "",
+        html: `<span class="marker-pin${isDepot ? " depot" : ""}">${label}</span>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -16]
+      });
+    }
+
+    function getThemeValue(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function naturalOrder(roundTrip = els.mode.value === "round") {
+      const order = stops.map((_, index) => index);
+      return roundTrip && stops.length > 1 ? order.concat(0) : order;
+    }
+
+    function coord(stop) {
+      return `${stop.lat},${stop.lng}`;
+    }
+
+    function toRad(value) {
+      return (value * Math.PI) / 180;
+    }
+
+    function makeId(index) {
+      return `${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function saveAndRender() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stops));
+      render();
+    }
+
+    function saveFavorites() {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    }
+
+    function readStops() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter(stop => stop && stop.name && Number.isFinite(stop.lat) && Number.isFinite(stop.lng))
+          .slice(0, MAX_STOPS)
+          .map((stop, index) => ({
+            id: stop.id || makeId(index),
+            name: String(stop.name),
+            address: String(stop.address || stop.name),
+            lat: stop.lat,
+            lng: stop.lng
+          }));
+      } catch (error) {
+        console.warn("Could not restore saved route.", error);
+        return [];
+      }
+    }
+
+    function readFavorites() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter(favorite => favorite && favorite.name && favorite.address)
+          .map((favorite, index) => ({
+            id: favorite.id || makeId(index),
+            name: String(favorite.name),
+            address: String(favorite.address)
+          }));
+      } catch (error) {
+        console.warn("Could not restore favorites.", error);
+        return [];
+      }
+    }
+
+    function setTab(tab) {
+      const importing = tab === "import";
+      els.importPanel.classList.toggle("hidden", !importing);
+      els.form.classList.toggle("hidden", importing);
+      els.tabImport.classList.toggle("active", importing);
+      els.tabSingle.classList.toggle("active", !importing);
+    }
+
+    function copyItinerary() {
+      const text = itineraryText();
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        els.copyRoute.textContent = "Copied";
+        window.setTimeout(() => { els.copyRoute.textContent = "Copy itinerary"; }, 1200);
+      });
+    }
+
+    function itineraryText() {
+      const active = (routeOrder.length ? routeOrder : naturalOrder()).map(index => stops[index]).filter(Boolean);
+      if (active.length < 2) return "";
+      return active.map((stop, index) => `${index + 1}. ${stop.name}`).join("\n");
+    }
+
+    function downloadCsv() {
+      const active = (routeOrder.length ? routeOrder : naturalOrder()).map(index => stops[index]).filter(Boolean);
+      if (!active.length) return;
+      const header = "order,name,latitude,longitude";
+      const rows = active.map((stop, index) => `${index + 1},"${stop.name.replaceAll('"', '""')}",${stop.lat},${stop.lng}`);
+      const blob = new Blob([[header].concat(rows).join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "optimized-route.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    routeOrder = naturalOrder();
+    render();
+  </script>
+</body>
+</html>
