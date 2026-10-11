@@ -522,6 +522,13 @@
         display: grid;
         grid-template-columns: 1fr;
       }
+      #add-demo,
+      #tab-import {
+        display: none;
+      }
+      .tabs {
+        grid-template-columns: 1fr;
+      }
       .tabs button {
         min-height: 44px;
       }
@@ -542,7 +549,7 @@
       .stop-card .mini-actions {
         grid-column: 1 / -1;
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         width: 100%;
       }
       .favorite-card .mini-actions {
@@ -1285,6 +1292,7 @@
             <div class="stop-meta">${index === 0 ? "Starting point" : `Stop ${index + 1}`}</div>
           </div>
           <div class="mini-actions">
+            <button type="button" data-stop-action="favorite" aria-label="Save stop as favorite" title="Save as favorite">☆</button>
             <button type="button" data-stop-action="up" aria-label="Move stop up">Up</button>
             <button type="button" data-stop-action="down" aria-label="Move stop down">Dn</button>
             <button type="button" data-stop-action="delete" aria-label="Delete stop">X</button>
@@ -1292,6 +1300,7 @@
         li.querySelector(".stop-title").textContent = stop.name;
         li.querySelector('[data-stop-action="up"]').disabled = index === 0;
         li.querySelector('[data-stop-action="down"]').disabled = index === stops.length - 1;
+        li.querySelector('[data-stop-action="favorite"]').addEventListener("click", () => saveStopAsFavorite(index));
         li.querySelector('[data-stop-action="up"]').addEventListener("click", () => moveStop(index, -1));
         li.querySelector('[data-stop-action="down"]').addEventListener("click", () => moveStop(index, 1));
         li.querySelector('[data-stop-action="delete"]').addEventListener("click", () => deleteStop(index));
@@ -1348,6 +1357,33 @@
       }
       els.favoriteAddress.value = address;
       if (!els.favoriteName.value.trim()) els.favoriteName.focus();
+    }
+
+    function saveStopAsFavorite(index) {
+      const stop = stops[index];
+      if (!stop) return;
+      const defaultName = stop.name || `Stop ${index + 1}`;
+      const name = window.prompt("Save this stop as favorite name:", defaultName);
+      if (name === null) return;
+      const cleanName = name.trim();
+      if (!cleanName) {
+        window.alert("Favorite name is required.");
+        return;
+      }
+      const address = (stop.address || stop.name || "").trim();
+      const existingIndex = favorites.findIndex(favorite =>
+        favorite.name.toLowerCase() === cleanName.toLowerCase() ||
+        favorite.address.toLowerCase() === address.toLowerCase()
+      );
+      const favorite = { id: existingIndex >= 0 ? favorites[existingIndex].id : makeId(favorites.length), name: cleanName, address };
+      if (existingIndex >= 0) favorites[existingIndex] = favorite;
+      else favorites.push(favorite);
+      saveFavorites();
+      renderFavorites();
+      els.geocodeStatus.textContent = `Saved favorite: ${cleanName}`;
+      window.setTimeout(() => {
+        if (els.geocodeStatus.textContent === `Saved favorite: ${cleanName}`) els.geocodeStatus.textContent = "";
+      }, 2500);
     }
 
     async function addFavoriteToRoute(index) {
