@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
-  <title>Scout Route Optimizer</title>
+  <title>Route Optimizer</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script>
     (() => {
-      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const param = new URLSearchParams(window.location.search).get("theme");
       const theme =
         param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", theme);
@@ -486,8 +486,8 @@
     <header>
       <div class="hero">
         <div>
-          <h1>Scout Route Optimizer</h1>
-          <p class="subtitle">A RouteXL-style planner for up to 20 stops. Add addresses, click the local map, import a batch, optimize the visit order, then copy or export the itinerary.</p>
+          <h1>Route Optimizer</h1>
+          <p class="subtitle">A multi-stop planner for up to 20 stops. Add addresses, click the local map, import a batch, optimize the visit order, then copy or export the itinerary.</p>
         </div>
         <div class="pillbar" aria-label="Capabilities">
           <span class="pill">20-stop planner</span>
@@ -643,8 +643,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const MAX_STOPS = 20;
-    const STORAGE_KEY = "scout-route-optimizer-stops";
-    const FAVORITES_KEY = "scout-route-optimizer-favorites";
+    const STORAGE_KEY = "route-optimizer-stops";
+    const FAVORITES_KEY = "route-optimizer-favorites";
     const demoStops = [
       { name: "Microsoft Redmond Campus", lat: 47.6423, lng: -122.1368 },
       { name: "Bellevue Downtown", lat: 47.6101, lng: -122.2015 },
