@@ -745,7 +745,7 @@
           <div class="app-eyebrow">Driver console</div>
           <div class="brand-line">
             <h1>Today's run</h1>
-            <span class="version">StopLoop v0.2.0</span>
+            <span class="version">StopLoop v0.2.1</span>
           </div>
           <p class="subtitle">A practical driver view with quick address entry, favorites, voice input, and round-trip optimization.</p>
         </div>
@@ -1000,11 +1000,13 @@
     els.optimize.addEventListener("click", () => {
       optimizeRoute();
       render();
+      focusRouteMap();
     });
     els.optimizeRound.addEventListener("click", () => {
       if (els.mode.value !== "round") els.mode.value = "round";
       optimizeRoute();
       render();
+      focusRouteMap();
     });
     els.mode.addEventListener("change", () => {
       if (optimized) optimizeRoute();
@@ -1586,6 +1588,23 @@
           .addTo(markerLayer);
       });
       roadMap.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
+    }
+
+    function focusRouteMap() {
+      if (!roadMap || stops.length < 2) return;
+      const active = (routeOrder.length ? routeOrder : naturalOrder()).map(index => stops[index]).filter(Boolean);
+      const routeBounds = active.map(stop => [stop.lat, stop.lng]);
+      window.setTimeout(() => {
+        roadMap.invalidateSize();
+        roadMap.fitBounds(routeBounds, { padding: [42, 42], maxZoom: 13 });
+        if (window.matchMedia("(max-width: 760px)").matches) {
+          const rect = els.map.getBoundingClientRect();
+          window.scrollTo({
+            top: Math.max(0, window.scrollY + rect.top - 180),
+            behavior: "smooth"
+          });
+        }
+      }, 80);
     }
 
     function renderStats() {
