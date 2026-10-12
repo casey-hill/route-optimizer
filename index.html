@@ -417,6 +417,12 @@
       min-height: 30px;
       padding: 4px 8px;
     }
+    .star-button.is-favorite {
+      background: var(--cp-accent-soft);
+      border-color: var(--cp-accent);
+      color: var(--cp-accent);
+      font-weight: 800;
+    }
     .map-card {
       min-height: 620px;
       display: grid;
@@ -761,7 +767,7 @@
         bottom: 0;
         z-index: 20;
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
         padding: 10px 12px 18px;
         border-top: 1px solid var(--cp-border);
@@ -795,9 +801,7 @@
       }
       body[data-mobile-view="build"] .map-card,
       body[data-mobile-view="build"] section[aria-labelledby="route-title"],
-      body[data-mobile-view="route"] section[aria-labelledby="stops-title"],
-      body[data-mobile-view="favorites"] .map-card,
-      body[data-mobile-view="favorites"] section[aria-labelledby="route-title"] {
+      body[data-mobile-view="route"] section[aria-labelledby="stops-title"] {
         display: none;
       }
       body[data-mobile-view="build"] .stop-list {
@@ -805,17 +809,6 @@
       }
       body[data-mobile-view="build"] #stops-empty:not(.hidden) {
         display: block !important;
-      }
-      body[data-mobile-view="favorites"] #stop-form,
-      body[data-mobile-view="favorites"] .mobile-round-card,
-      body[data-mobile-view="favorites"] .voice-panel,
-      body[data-mobile-view="favorites"] .stop-list,
-      body[data-mobile-view="favorites"] #stops-empty,
-      body[data-mobile-view="favorites"] #import-panel {
-        display: none !important;
-      }
-      body[data-mobile-view="favorites"] .favorites-panel {
-        display: grid !important;
       }
       .leaflet-control-zoom a {
         width: 36px;
@@ -863,7 +856,7 @@
               <div class="app-eyebrow">Driver console</div>
               <div class="brand-line">
                 <h1>Today's run</h1>
-                <span class="version">StopLoop v0.3.0</span>
+                <span class="version">StopLoop v0.3.1</span>
               </div>
             </div>
           </div>
@@ -887,8 +880,8 @@
         <div class="card-body stack">
           <form id="stop-form" class="stack">
             <div class="field">
-              <label for="stop-name">Address or label</label>
-              <input id="stop-name" autocomplete="off" placeholder="Add an address or say it out loud">
+              <label for="stop-name">Address or favorite</label>
+              <input id="stop-name" autocomplete="off" placeholder="Add an address or favorite name">
             </div>
             <div class="actions">
               <button class="primary" type="submit">Add stop</button>
@@ -1031,7 +1024,6 @@
     <nav id="mobile-nav" class="mobile-bottom-nav" aria-label="Mobile navigation">
       <button class="active" type="button" data-mobile-view="build">Build</button>
       <button type="button" data-mobile-view="route">Route</button>
-      <button type="button" data-mobile-view="favorites">Favorites</button>
     </nav>
   </div>
 
@@ -1392,6 +1384,11 @@
     }
 
     async function addStop(name, latValue, lngValue) {
+      const typed = name.trim();
+      if (!latValue && !lngValue) {
+        const favorite = findFavoriteByName(typed);
+        if (favorite) return addStopWithLabel(favorite.address, "", "", favorite.name);
+      }
       return addStopWithLabel(name, latValue, lngValue);
     }
 
@@ -1618,6 +1615,7 @@
       els.stopList.innerHTML = "";
       els.stopsEmpty.classList.toggle("hidden", stops.length > 0);
       stops.forEach((stop, index) => {
+        const savedFavorite = findFavoriteForStop(stop);
         const li = document.createElement("li");
         li.className = "stop-card";
         li.innerHTML = `
@@ -1627,7 +1625,7 @@
             <div class="stop-meta">${index === 0 ? "Starting point" : `Stop ${index + 1}`}</div>
           </div>
           <div class="mini-actions">
-            <button type="button" data-stop-action="favorite" aria-label="Save stop as favorite" title="Save as favorite">☆</button>
+            <button type="button" class="star-button${savedFavorite ? " is-favorite" : ""}" data-stop-action="favorite" aria-label="${savedFavorite ? "Saved as favorite" : "Save stop as favorite"}" title="${savedFavorite ? "Saved favorite" : "Save as favorite"}">${savedFavorite ? "★" : "☆"}</button>
             <button type="button" data-stop-action="up" aria-label="Move stop up">Up</button>
             <button type="button" data-stop-action="down" aria-label="Move stop down">Dn</button>
             <button type="button" data-stop-action="delete" aria-label="Delete stop">X</button>
@@ -1682,6 +1680,7 @@
       els.favoriteAddress.value = "";
       saveFavorites();
       renderFavorites();
+      renderStops();
     }
 
     function saveCurrentAddressAsFavorite() {
@@ -1715,6 +1714,7 @@
       else favorites.push(favorite);
       saveFavorites();
       renderFavorites();
+      renderStops();
       els.geocodeStatus.textContent = `Saved favorite: ${cleanName}`;
       window.setTimeout(() => {
         if (els.geocodeStatus.textContent === `Saved favorite: ${cleanName}`) els.geocodeStatus.textContent = "";
@@ -1731,6 +1731,22 @@
       favorites.splice(index, 1);
       saveFavorites();
       renderFavorites();
+      renderStops();
+    }
+
+    function findFavoriteByName(name) {
+      const normalized = name.trim().toLowerCase();
+      if (!normalized) return null;
+      return favorites.find(favorite => favorite.name.toLowerCase() === normalized) || null;
+    }
+
+    function findFavoriteForStop(stop) {
+      const address = (stop.address || stop.name || "").trim().toLowerCase();
+      const name = (stop.name || "").trim().toLowerCase();
+      return favorites.find(favorite =>
+        favorite.address.toLowerCase() === address ||
+        favorite.name.toLowerCase() === name
+      ) || null;
     }
 
     function renderRoute() {
