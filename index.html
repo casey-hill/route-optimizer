@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -720,7 +720,8 @@
       .stop-card .mini-actions {
         grid-column: 1 / -1;
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, auto);
+        justify-content: end;
         width: 100%;
       }
       .favorite-card .mini-actions {
@@ -860,7 +861,7 @@
               <div class="app-eyebrow">Driver console</div>
               <div class="brand-line">
                 <h1>Today's run</h1>
-                <span class="version">StopLoop v0.3.4</span>
+                <span class="version">StopLoop v0.3.5</span>
               </div>
             </div>
           </div>
@@ -1627,13 +1628,10 @@
           </div>
           <div class="mini-actions">
             <button type="button" class="star-button${savedFavorite ? " is-favorite" : ""}" data-stop-action="favorite" aria-label="${savedFavorite ? "Remove favorite" : "Save stop as favorite"}" title="${savedFavorite ? "Remove favorite" : "Save as favorite"}">${savedFavorite ? "★" : "☆"}</button>
-            <button type="button" data-stop-action="optimize" aria-label="Optimize round trip from stop list">Optimize</button>
             <button type="button" data-stop-action="delete" aria-label="Delete stop">X</button>
           </div>`;
         li.querySelector(".stop-title").textContent = stop.name;
-        li.querySelector('[data-stop-action="optimize"]').disabled = stops.length < 3;
         li.querySelector('[data-stop-action="favorite"]').addEventListener("click", () => toggleStopFavorite(index));
-        li.querySelector('[data-stop-action="optimize"]').addEventListener("click", () => optimizeRoundTrip());
         li.querySelector('[data-stop-action="delete"]').addEventListener("click", () => deleteStop(index));
         els.stopList.appendChild(li);
       });
@@ -2031,3 +2029,4 @@
   </script>
 </body>
 </html>
+
