@@ -142,6 +142,14 @@
       font-size: clamp(28px, 4vw, 46px);
       letter-spacing: -0.04em;
     }
+    .app-eyebrow {
+      color: var(--cp-accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
     .brand-line {
       display: flex;
       align-items: baseline;
@@ -501,6 +509,7 @@
       border: 1px solid var(--cp-border);
     }
     .hidden { display: none; }
+    #mobile-mic { display: none; }
 
     @media (max-width: 1180px) {
       main { grid-template-columns: 1fr 1fr; }
@@ -516,6 +525,21 @@
         gap: 12px;
         padding: 12px;
       }
+      section[aria-labelledby="stops-title"] {
+        order: 1;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        overflow: visible;
+      }
+      section[aria-labelledby="stops-title"] > .card-head {
+        display: none;
+      }
+      section[aria-labelledby="stops-title"] > .card-body {
+        padding: 0;
+      }
+      .map-card { order: 2; }
+      section[aria-labelledby="route-title"] { order: 3; }
       .hero {
         grid-template-columns: minmax(0, 1fr);
         gap: 10px;
@@ -526,6 +550,9 @@
       }
       .subtitle {
         font-size: 15px;
+      }
+      .app-eyebrow {
+        display: block;
       }
       .pillbar {
         justify-content: flex-start;
@@ -557,11 +584,41 @@
         display: grid;
         grid-template-columns: 1fr;
       }
+      #stop-form,
+      .mobile-round-card,
+      .map-card,
+      .stop-list,
+      .favorites-panel,
+      .voice-panel {
+        border-radius: 16px;
+      }
+      #stop-form {
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        box-shadow: var(--cp-shadow);
+        padding: 14px;
+      }
+      #stop-form .muted {
+        display: none;
+      }
+      #stop-form .actions {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+      #mobile-mic {
+        display: block;
+        min-width: 72px;
+      }
+      #clear-stops {
+        display: none;
+      }
       .mobile-round-card {
         display: grid;
+        box-shadow: var(--cp-shadow);
       }
       #add-demo,
-      #tab-import {
+      #add-tabs,
+      #tab-import,
+      #import-panel {
         display: none;
       }
       .tabs {
@@ -582,6 +639,17 @@
       .favorites-panel { order: 4; }
       .voice-panel { order: 5; }
       #import-panel { order: 6; }
+      .favorites-panel,
+      .voice-panel,
+      #voice-panel,
+      #voice-transcript,
+      .stop-list,
+      #stops-empty {
+        display: none !important;
+      }
+      .voice-transcript:empty::before {
+        content: none;
+      }
       .stop-list {
         max-height: 280px;
         overflow-y: auto;
@@ -612,27 +680,24 @@
       }
       .map-card {
         grid-column: auto;
-        order: 0;
         min-height: 0;
       }
       .map-card .actions {
         width: 100%;
       }
       .map-wrap {
-        min-height: 180px;
+        min-height: 132px;
         padding: 10px;
       }
       .map,
       .map-fallback {
-        min-height: 180px;
-        height: 24vh;
-        max-height: 240px;
+        min-height: 132px;
+        height: 17vh;
+        max-height: 172px;
         border-radius: 12px;
       }
       .stats {
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-        padding: 10px;
+        display: none;
       }
       .stat {
         padding: 8px;
@@ -642,6 +707,11 @@
       }
       .route-step {
         padding: 10px;
+      }
+      section[aria-labelledby="route-title"] .notice,
+      section[aria-labelledby="route-title"] .actions,
+      section[aria-labelledby="route-title"] .card-head button {
+        display: none;
       }
       .leaflet-control-zoom a {
         width: 36px;
@@ -661,8 +731,8 @@
       }
       .map,
       .map-fallback {
-        height: 22vh;
-        min-height: 168px;
+        height: 16vh;
+        min-height: 126px;
       }
     }
   </style>
@@ -672,11 +742,12 @@
     <header>
       <div class="hero">
         <div>
+          <div class="app-eyebrow">Driver console</div>
           <div class="brand-line">
-            <h1>StopLoop</h1>
-            <span class="version">v0.2.0</span>
+            <h1>Today's run</h1>
+            <span class="version">StopLoop v0.2.0</span>
           </div>
-          <p class="subtitle">A multi-stop planner for up to 20 stops. Add addresses, click the local map, import a batch, optimize the visit order, then copy or export the itinerary.</p>
+          <p class="subtitle">A practical driver view with quick address entry, favorites, voice input, and round-trip optimization.</p>
         </div>
         <div class="pillbar" aria-label="Capabilities">
           <span class="pill">20-stop planner</span>
@@ -694,18 +765,14 @@
           <span class="pill"><span id="stop-count">0</span>/20</span>
         </div>
         <div class="card-body stack">
-          <div class="tabs" role="tablist" aria-label="Add stops">
-            <button id="tab-single" class="active" type="button">Single stop</button>
-            <button id="tab-import" type="button">Import</button>
-          </div>
-
           <form id="stop-form" class="stack">
             <div class="field">
               <label for="stop-name">Address or label</label>
-              <input id="stop-name" autocomplete="off" placeholder="Example: 1 Microsoft Way, Redmond">
+              <input id="stop-name" autocomplete="off" placeholder="Add an address or say it out loud">
             </div>
             <div class="actions">
               <button class="primary" type="submit">Add stop</button>
+              <button id="mobile-mic" type="button">Mic</button>
               <button id="add-demo" type="button">Load demo route</button>
               <button id="clear-stops" class="danger" type="button">Clear</button>
             </div>
@@ -783,8 +850,8 @@
       <section class="card map-card" aria-labelledby="map-title">
         <div class="card-head">
           <div>
-            <h2 id="map-title">Route map</h2>
-            <p class="muted" id="map-help">Click inside the map to add a local stop.</p>
+            <h2 id="map-title">Next stop</h2>
+            <p class="muted" id="map-help">Compact route preview. Tap the map to add a local stop.</p>
           </div>
           <div class="actions">
             <label class="muted" for="route-mode">Mode</label>
@@ -885,6 +952,7 @@
       mobileRoundDistance: document.getElementById("mobile-round-distance"),
       mobileRoundStatus: document.getElementById("mobile-round-status"),
       addDemo: document.getElementById("add-demo"),
+      mobileMic: document.getElementById("mobile-mic"),
       clearStops: document.getElementById("clear-stops"),
       importPanel: document.getElementById("import-panel"),
       tabSingle: document.getElementById("tab-single"),
@@ -942,8 +1010,8 @@
       if (optimized) optimizeRoute();
       render();
     });
-    els.tabSingle.addEventListener("click", () => setTab("single"));
-    els.tabImport.addEventListener("click", () => setTab("import"));
+    els.tabSingle?.addEventListener("click", () => setTab("single"));
+    els.tabImport?.addEventListener("click", () => setTab("import"));
     els.copySample.addEventListener("click", () => {
       els.importText.value = demoStops.map(stop => stop.name).join("\n");
     });
@@ -952,6 +1020,7 @@
     els.downloadCsv.addEventListener("click", () => downloadCsv());
     els.saveFavorite.addEventListener("click", () => saveFavorite());
     els.saveCurrentFavorite.addEventListener("click", () => saveCurrentAddressAsFavorite());
+    els.mobileMic.addEventListener("click", () => startVoiceMode());
     els.voiceStart.addEventListener("click", () => startVoiceMode());
     els.voiceStop.addEventListener("click", () => stopVoiceMode("Voice mode stopped."));
     els.voiceAdd.addEventListener("click", () => addVoiceCandidate());
@@ -1674,8 +1743,8 @@
       const importing = tab === "import";
       els.importPanel.classList.toggle("hidden", !importing);
       els.form.classList.toggle("hidden", importing);
-      els.tabImport.classList.toggle("active", importing);
-      els.tabSingle.classList.toggle("active", !importing);
+      els.tabImport?.classList.toggle("active", importing);
+      els.tabSingle?.classList.toggle("active", !importing);
     }
 
     function copyItinerary() {
