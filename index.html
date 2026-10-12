@@ -716,7 +716,7 @@
       .stop-card .mini-actions {
         grid-column: 1 / -1;
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         width: 100%;
       }
       .favorite-card .mini-actions {
@@ -856,7 +856,7 @@
               <div class="app-eyebrow">Driver console</div>
               <div class="brand-line">
                 <h1>Today's run</h1>
-                <span class="version">StopLoop v0.3.1</span>
+                <span class="version">StopLoop v0.3.2</span>
               </div>
             </div>
           </div>
@@ -1120,17 +1120,10 @@
     });
     els.clearStops.addEventListener("click", () => clearRoute());
     els.optimize.addEventListener("click", () => {
-      optimizeRoute();
-      render();
-      setMobileView("route");
-      focusRouteMap();
+      optimizeRoundTrip();
     });
     els.optimizeRound.addEventListener("click", () => {
-      if (els.mode.value !== "round") els.mode.value = "round";
-      optimizeRoute();
-      render();
-      setMobileView("route");
-      focusRouteMap();
+      optimizeRoundTrip();
     });
     els.mode.addEventListener("change", () => {
       if (optimized) optimizeRoute();
@@ -1219,19 +1212,15 @@
         els.mobilePrimaryAction.disabled = stops.length < 2;
         return;
       }
-      els.mobilePrimaryAction.textContent = "Save favorite";
-      els.mobilePrimaryAction.disabled = false;
+      document.body.dataset.mobileView = "build";
+      updateMobilePrimaryAction();
     }
 
     async function runMobilePrimaryAction() {
       const view = document.body.dataset.mobileView || "build";
       if (view === "build") {
         if (stops.length >= 3) {
-          if (els.mode.value !== "round") els.mode.value = "round";
-          optimizeRoute();
-          render();
-          setMobileView("route");
-          focusRouteMap(false);
+          optimizeRoundTrip(false);
           return;
         }
         els.name.focus();
@@ -1241,7 +1230,7 @@
         if (els.mapsLink.href) window.open(els.mapsLink.href, "_blank", "noopener,noreferrer");
         return;
       }
-      saveFavorite();
+      setMobileView("build");
     }
 
     function startVoiceMode() {
@@ -1535,6 +1524,14 @@
       optimized = true;
     }
 
+    function optimizeRoundTrip(shouldScroll = true) {
+      if (els.mode.value !== "round") els.mode.value = "round";
+      optimizeRoute();
+      render();
+      setMobileView("route");
+      focusRouteMap(shouldScroll);
+    }
+
     function nearestNeighbor(openRoute) {
       const remaining = new Set(stops.map((_, index) => index));
       const order = [0];
@@ -1626,16 +1623,13 @@
           </div>
           <div class="mini-actions">
             <button type="button" class="star-button${savedFavorite ? " is-favorite" : ""}" data-stop-action="favorite" aria-label="${savedFavorite ? "Saved as favorite" : "Save stop as favorite"}" title="${savedFavorite ? "Saved favorite" : "Save as favorite"}">${savedFavorite ? "★" : "☆"}</button>
-            <button type="button" data-stop-action="up" aria-label="Move stop up">Up</button>
-            <button type="button" data-stop-action="down" aria-label="Move stop down">Dn</button>
+            <button type="button" data-stop-action="optimize" aria-label="Optimize round trip from stop list">Optimize</button>
             <button type="button" data-stop-action="delete" aria-label="Delete stop">X</button>
           </div>`;
         li.querySelector(".stop-title").textContent = stop.name;
-        li.querySelector('[data-stop-action="up"]').disabled = index === 0;
-        li.querySelector('[data-stop-action="down"]').disabled = index === stops.length - 1;
+        li.querySelector('[data-stop-action="optimize"]').disabled = stops.length < 3;
         li.querySelector('[data-stop-action="favorite"]').addEventListener("click", () => saveStopAsFavorite(index));
-        li.querySelector('[data-stop-action="up"]').addEventListener("click", () => moveStop(index, -1));
-        li.querySelector('[data-stop-action="down"]').addEventListener("click", () => moveStop(index, 1));
+        li.querySelector('[data-stop-action="optimize"]').addEventListener("click", () => optimizeRoundTrip());
         li.querySelector('[data-stop-action="delete"]').addEventListener("click", () => deleteStop(index));
         els.stopList.appendChild(li);
       });
