@@ -3,7 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="data:,">
+  <meta name="theme-color" content="#b11f4b">
+  <meta name="description" content="Mobile-friendly multi-stop route planner with address lookup, favorites, voice entry, and round-trip optimization.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="stoploop-icon-192.png">
+  <link rel="apple-touch-icon" href="stoploop-icon-192.png">
   <title>StopLoop</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script>
@@ -856,7 +860,7 @@
               <div class="app-eyebrow">Driver console</div>
               <div class="brand-line">
                 <h1>Today's run</h1>
-                <span class="version">StopLoop v0.3.3</span>
+                <span class="version">StopLoop v0.3.4</span>
               </div>
             </div>
           </div>
@@ -2015,6 +2019,15 @@
 
     routeOrder = naturalOrder();
     render();
+    if ("serviceWorker" in navigator) {
+      const registerServiceWorker = () => {
+        navigator.serviceWorker.register("./sw.js").catch(error => {
+          console.warn("Service worker registration failed.", error);
+        });
+      };
+      if (document.readyState === "complete") registerServiceWorker();
+      else window.addEventListener("load", registerServiceWorker, { once: true });
+    }
   </script>
 </body>
 </html>

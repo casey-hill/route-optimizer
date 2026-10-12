@@ -1,6 +1,6 @@
 ﻿# StopLoop
 
-Mobile-friendly multi-stop route planner with address lookup, favorites, voice entry, and GitHub Pages hosting.
+Mobile-friendly multi-stop route planner with address lookup, favorites, voice entry, GitHub Pages hosting, and installable PWA support.
 
-Current version: v0.3.3
+Current version: v0.3.4
 

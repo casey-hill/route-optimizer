@@ -1,0 +1,25 @@
+{
+  "name": "StopLoop",
+  "short_name": "StopLoop",
+  "description": "Mobile-friendly multi-stop route planner with address lookup, favorites, voice entry, and round-trip optimization.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f4ef",
+  "theme_color": "#b11f4b",
+  "icons": [
+    {
+      "src": "stoploop-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "stoploop-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
