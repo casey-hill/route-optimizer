@@ -534,6 +534,10 @@
     }
     .hidden { display: none; }
     #mobile-mic { display: none; }
+    .mobile-bottom-nav,
+    .mobile-sticky-action {
+      display: none;
+    }
 
     @media (max-width: 1180px) {
       main { grid-template-columns: 1fr 1fr; }
@@ -541,6 +545,9 @@
     }
     @media (max-width: 760px) {
       body { overflow-x: hidden; }
+      body {
+        padding-bottom: 142px;
+      }
       header {
         padding: 14px 12px;
       }
@@ -648,6 +655,9 @@
         display: grid;
         box-shadow: var(--cp-shadow);
       }
+      #optimize-round {
+        display: none;
+      }
       #add-demo,
       #add-tabs,
       #tab-import,
@@ -675,9 +685,7 @@
       .favorites-panel,
       .voice-panel,
       #voice-panel,
-      #voice-transcript,
-      .stop-list,
-      #stops-empty {
+      #voice-transcript {
         display: none !important;
       }
       .voice-transcript:empty::before {
@@ -746,6 +754,69 @@
       section[aria-labelledby="route-title"] .card-head button {
         display: none;
       }
+      .mobile-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 10px 12px 18px;
+        border-top: 1px solid var(--cp-border);
+        background: var(--cp-panel-strong);
+      }
+      .mobile-bottom-nav button {
+        min-height: 52px;
+        border: 0;
+        background: transparent;
+        color: var(--cp-text-muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .mobile-bottom-nav button.active {
+        background: var(--cp-accent-soft);
+        color: var(--cp-accent);
+      }
+      .mobile-sticky-action {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 88px;
+        z-index: 21;
+        display: block;
+      }
+      .mobile-sticky-action button {
+        width: 100%;
+        border: 0;
+        min-height: 52px;
+        box-shadow: var(--cp-shadow);
+      }
+      body[data-mobile-view="build"] .map-card,
+      body[data-mobile-view="build"] section[aria-labelledby="route-title"],
+      body[data-mobile-view="route"] section[aria-labelledby="stops-title"],
+      body[data-mobile-view="favorites"] .map-card,
+      body[data-mobile-view="favorites"] section[aria-labelledby="route-title"] {
+        display: none;
+      }
+      body[data-mobile-view="build"] .stop-list {
+        display: grid !important;
+      }
+      body[data-mobile-view="build"] #stops-empty:not(.hidden) {
+        display: block !important;
+      }
+      body[data-mobile-view="favorites"] #stop-form,
+      body[data-mobile-view="favorites"] .mobile-round-card,
+      body[data-mobile-view="favorites"] .voice-panel,
+      body[data-mobile-view="favorites"] .stop-list,
+      body[data-mobile-view="favorites"] #stops-empty,
+      body[data-mobile-view="favorites"] #import-panel {
+        display: none !important;
+      }
+      body[data-mobile-view="favorites"] .favorites-panel {
+        display: grid !important;
+      }
       .leaflet-control-zoom a {
         width: 36px;
         height: 36px;
@@ -773,7 +844,7 @@
     }
   </style>
 </head>
-<body>
+<body data-mobile-view="build">
   <div class="shell">
     <header>
       <div class="hero">
@@ -792,7 +863,7 @@
               <div class="app-eyebrow">Driver console</div>
               <div class="brand-line">
                 <h1>Today's run</h1>
-                <span class="version">StopLoop v0.2.2</span>
+                <span class="version">StopLoop v0.3.0</span>
               </div>
             </div>
           </div>
@@ -954,6 +1025,14 @@
         </div>
       </section>
     </main>
+    <div id="mobile-primary-wrap" class="mobile-sticky-action">
+      <button id="mobile-primary-action" class="primary" type="button">Optimize round trip</button>
+    </div>
+    <nav id="mobile-nav" class="mobile-bottom-nav" aria-label="Mobile navigation">
+      <button class="active" type="button" data-mobile-view="build">Build</button>
+      <button type="button" data-mobile-view="route">Route</button>
+      <button type="button" data-mobile-view="favorites">Favorites</button>
+    </nav>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1027,6 +1106,8 @@
       voiceStop: document.getElementById("voice-stop"),
       voiceAdd: document.getElementById("voice-add"),
       voiceRetry: document.getElementById("voice-retry"),
+      mobileNav: document.getElementById("mobile-nav"),
+      mobilePrimaryAction: document.getElementById("mobile-primary-action"),
       stats: {
         stops: document.getElementById("stat-stops"),
         distance: document.getElementById("stat-distance"),
@@ -1049,12 +1130,14 @@
     els.optimize.addEventListener("click", () => {
       optimizeRoute();
       render();
+      setMobileView("route");
       focusRouteMap();
     });
     els.optimizeRound.addEventListener("click", () => {
       if (els.mode.value !== "round") els.mode.value = "round";
       optimizeRoute();
       render();
+      setMobileView("route");
       focusRouteMap();
     });
     els.mode.addEventListener("change", () => {
@@ -1072,6 +1155,10 @@
     els.saveFavorite.addEventListener("click", () => saveFavorite());
     els.saveCurrentFavorite.addEventListener("click", () => saveCurrentAddressAsFavorite());
     els.mobileMic.addEventListener("click", () => startVoiceMode());
+    els.mobileNav.querySelectorAll("[data-mobile-view]").forEach(button => {
+      button.addEventListener("click", () => setMobileView(button.dataset.mobileView));
+    });
+    els.mobilePrimaryAction.addEventListener("click", () => runMobilePrimaryAction());
     els.voiceStart.addEventListener("click", () => startVoiceMode());
     els.voiceStop.addEventListener("click", () => stopVoiceMode("Voice mode stopped."));
     els.voiceAdd.addEventListener("click", () => addVoiceCandidate());
@@ -1112,6 +1199,57 @@
       els.voiceSupport.textContent = "Voice ready";
       els.voiceAdd.disabled = true;
       els.voiceRetry.disabled = true;
+    }
+
+    function setMobileView(view) {
+      document.body.dataset.mobileView = view;
+      els.mobileNav.querySelectorAll("[data-mobile-view]").forEach(button => {
+        button.classList.toggle("active", button.dataset.mobileView === view);
+      });
+      updateMobilePrimaryAction();
+      if (view === "route" && roadMap) {
+        window.setTimeout(() => {
+          roadMap.invalidateSize();
+          if (stops.length) focusRouteMap(false);
+        }, 80);
+      }
+    }
+
+    function updateMobilePrimaryAction() {
+      const view = document.body.dataset.mobileView || "build";
+      if (view === "build") {
+        els.mobilePrimaryAction.textContent = stops.length >= 3 ? "Optimize round trip" : "Add stop";
+        els.mobilePrimaryAction.disabled = false;
+        return;
+      }
+      if (view === "route") {
+        els.mobilePrimaryAction.textContent = "Open route in Maps";
+        els.mobilePrimaryAction.disabled = stops.length < 2;
+        return;
+      }
+      els.mobilePrimaryAction.textContent = "Save favorite";
+      els.mobilePrimaryAction.disabled = false;
+    }
+
+    async function runMobilePrimaryAction() {
+      const view = document.body.dataset.mobileView || "build";
+      if (view === "build") {
+        if (stops.length >= 3) {
+          if (els.mode.value !== "round") els.mode.value = "round";
+          optimizeRoute();
+          render();
+          setMobileView("route");
+          focusRouteMap(false);
+          return;
+        }
+        els.name.focus();
+        return;
+      }
+      if (view === "route") {
+        if (els.mapsLink.href) window.open(els.mapsLink.href, "_blank", "noopener,noreferrer");
+        return;
+      }
+      saveFavorite();
     }
 
     function startVoiceMode() {
@@ -1473,6 +1611,7 @@
       renderMapsLink();
       els.optimize.disabled = stops.length < 3;
       els.optimizeRound.disabled = stops.length < 3;
+      updateMobilePrimaryAction();
     }
 
     function renderStops() {
@@ -1639,14 +1778,14 @@
       roadMap.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
     }
 
-    function focusRouteMap() {
+    function focusRouteMap(shouldScroll = true) {
       if (!roadMap || stops.length < 2) return;
       const active = (routeOrder.length ? routeOrder : naturalOrder()).map(index => stops[index]).filter(Boolean);
       const routeBounds = active.map(stop => [stop.lat, stop.lng]);
       window.setTimeout(() => {
         roadMap.invalidateSize();
         roadMap.fitBounds(routeBounds, { padding: [42, 42], maxZoom: 13 });
-        if (window.matchMedia("(max-width: 760px)").matches) {
+        if (shouldScroll && window.matchMedia("(max-width: 760px)").matches) {
           const rect = els.map.getBoundingClientRect();
           window.scrollTo({
             top: Math.max(0, window.scrollY + rect.top - 180),
