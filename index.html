@@ -856,7 +856,7 @@
               <div class="app-eyebrow">Driver console</div>
               <div class="brand-line">
                 <h1>Today's run</h1>
-                <span class="version">StopLoop v0.3.2</span>
+                <span class="version">StopLoop v0.3.3</span>
               </div>
             </div>
           </div>
@@ -1622,13 +1622,13 @@
             <div class="stop-meta">${index === 0 ? "Starting point" : `Stop ${index + 1}`}</div>
           </div>
           <div class="mini-actions">
-            <button type="button" class="star-button${savedFavorite ? " is-favorite" : ""}" data-stop-action="favorite" aria-label="${savedFavorite ? "Saved as favorite" : "Save stop as favorite"}" title="${savedFavorite ? "Saved favorite" : "Save as favorite"}">${savedFavorite ? "★" : "☆"}</button>
+            <button type="button" class="star-button${savedFavorite ? " is-favorite" : ""}" data-stop-action="favorite" aria-label="${savedFavorite ? "Remove favorite" : "Save stop as favorite"}" title="${savedFavorite ? "Remove favorite" : "Save as favorite"}">${savedFavorite ? "★" : "☆"}</button>
             <button type="button" data-stop-action="optimize" aria-label="Optimize round trip from stop list">Optimize</button>
             <button type="button" data-stop-action="delete" aria-label="Delete stop">X</button>
           </div>`;
         li.querySelector(".stop-title").textContent = stop.name;
         li.querySelector('[data-stop-action="optimize"]').disabled = stops.length < 3;
-        li.querySelector('[data-stop-action="favorite"]').addEventListener("click", () => saveStopAsFavorite(index));
+        li.querySelector('[data-stop-action="favorite"]').addEventListener("click", () => toggleStopFavorite(index));
         li.querySelector('[data-stop-action="optimize"]').addEventListener("click", () => optimizeRoundTrip());
         li.querySelector('[data-stop-action="delete"]').addEventListener("click", () => deleteStop(index));
         els.stopList.appendChild(li);
@@ -1687,9 +1687,21 @@
       if (!els.favoriteName.value.trim()) els.favoriteName.focus();
     }
 
-    function saveStopAsFavorite(index) {
+    function toggleStopFavorite(index) {
       const stop = stops[index];
       if (!stop) return;
+      const savedFavorite = findFavoriteForStop(stop);
+      if (savedFavorite) {
+        favorites = favorites.filter(favorite => favorite.id !== savedFavorite.id);
+        saveFavorites();
+        renderFavorites();
+        renderStops();
+        els.geocodeStatus.textContent = `Removed favorite: ${savedFavorite.name}`;
+        window.setTimeout(() => {
+          if (els.geocodeStatus.textContent === `Removed favorite: ${savedFavorite.name}`) els.geocodeStatus.textContent = "";
+        }, 2500);
+        return;
+      }
       const defaultName = stop.name || `Stop ${index + 1}`;
       const name = window.prompt("Save this stop as favorite name:", defaultName);
       if (name === null) return;
