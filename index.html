@@ -156,6 +156,30 @@
       gap: 10px;
       flex-wrap: wrap;
     }
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo {
+      flex: 0 0 auto;
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: var(--cp-accent-soft);
+      border: 1px solid var(--cp-border);
+    }
+    .brand-logo svg {
+      width: 38px;
+      height: 38px;
+      display: block;
+    }
+    .logo-soft { fill: var(--cp-accent-soft); }
+    .logo-accent { stroke: var(--cp-accent); fill: none; }
+    .logo-accent-fill { fill: var(--cp-accent); }
+    .logo-text-fill { fill: var(--cp-text); }
     .version {
       color: var(--cp-text-muted);
       font-size: 12px;
@@ -548,6 +572,15 @@
         font-size: 32px;
         line-height: 1;
       }
+      .brand-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+      }
+      .brand-logo svg {
+        width: 34px;
+        height: 34px;
+      }
       .subtitle {
         font-size: 15px;
       }
@@ -723,6 +756,9 @@
       h1 {
         font-size: 28px;
       }
+      .brand-lockup {
+        align-items: flex-start;
+      }
       .subtitle {
         font-size: 14px;
       }
@@ -742,10 +778,23 @@
     <header>
       <div class="hero">
         <div>
-          <div class="app-eyebrow">Driver console</div>
-          <div class="brand-line">
-            <h1>Today's run</h1>
-            <span class="version">StopLoop v0.2.1</span>
+          <div class="brand-lockup">
+            <div class="brand-logo" aria-hidden="true">
+              <svg viewBox="0 0 160 160" focusable="false">
+                <rect class="logo-soft" x="24" y="24" width="112" height="112" rx="30"></rect>
+                <path class="logo-accent" d="M48 110C88 110 72 48 112 48" stroke-width="11" stroke-linecap="round"></path>
+                <circle class="logo-accent-fill" cx="48" cy="110" r="15"></circle>
+                <circle class="logo-accent-fill" cx="112" cy="48" r="15"></circle>
+                <circle class="logo-text-fill" cx="80" cy="80" r="11"></circle>
+              </svg>
+            </div>
+            <div>
+              <div class="app-eyebrow">Driver console</div>
+              <div class="brand-line">
+                <h1>Today's run</h1>
+                <span class="version">StopLoop v0.2.2</span>
+              </div>
+            </div>
           </div>
           <p class="subtitle">A practical driver view with quick address entry, favorites, voice input, and round-trip optimization.</p>
         </div>

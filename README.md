@@ -2,5 +2,5 @@
 
 Mobile-friendly multi-stop route planner with address lookup, favorites, voice entry, and GitHub Pages hosting.
 
-Current version: v0.2.1
+Current version: v0.2.2
 
