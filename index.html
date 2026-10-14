@@ -338,6 +338,12 @@
       border-color: var(--cp-accent);
       background: var(--cp-accent-soft);
     }
+    .mic-listening {
+      background: var(--cp-accent);
+      border-color: var(--cp-accent);
+      color: var(--cp-accent-fg);
+      font-weight: 800;
+    }
     .favorites-panel {
       border: 1px solid var(--cp-border);
       background: var(--cp-bg-elevated);
@@ -658,6 +664,9 @@
         display: block;
         min-width: 72px;
       }
+      #mobile-mic.mic-listening::before {
+        content: "● ";
+      }
       #clear-stops {
         display: none;
       }
@@ -860,7 +869,7 @@
             <div>
               <div class="brand-line">
                 <h1>StopLoop</h1>
-                <span class="version">v0.3.7</span>
+                <span class="version">v0.3.8</span>
               </div>
             </div>
           </div>
@@ -1143,7 +1152,7 @@
     els.downloadCsv.addEventListener("click", () => downloadCsv());
     els.saveFavorite.addEventListener("click", () => saveFavorite());
     els.saveCurrentFavorite.addEventListener("click", () => saveCurrentAddressAsFavorite());
-    els.mobileMic.addEventListener("click", () => startVoiceMode());
+    els.mobileMic.addEventListener("click", () => toggleVoiceMode());
     els.mobileNav.querySelectorAll("[data-mobile-view]").forEach(button => {
       button.addEventListener("click", () => setMobileView(button.dataset.mobileView));
     });
@@ -1171,14 +1180,11 @@
       recognition.interimResults = true;
       recognition.onstart = () => {
         voiceListening = true;
-        els.voicePanel.classList.add("listening");
-        els.voiceSupport.textContent = "Listening";
-        els.voiceStatus.textContent = "Listening. Say an address, then say yes to add it.";
+        setVoiceUiState(true, "Listening. Say an address, then tap Stop when done.");
       };
       recognition.onend = () => {
         voiceListening = false;
-        els.voicePanel.classList.remove("listening");
-        if (els.voiceSupport.textContent === "Listening") els.voiceSupport.textContent = "Voice ready";
+        setVoiceUiState(false, els.voiceSupport.textContent === "Listening" ? "Voice ready" : els.voiceStatus.textContent);
       };
       recognition.onerror = event => {
         els.voiceStatus.textContent = `Voice error: ${event.error}. Typed entry still works.`;
@@ -1246,11 +1252,27 @@
       }
     }
 
+    function toggleVoiceMode() {
+      if (voiceListening) {
+        stopVoiceMode("Voice mode stopped.");
+        return;
+      }
+      startVoiceMode();
+    }
+
     function stopVoiceMode(message = "Voice mode stopped.") {
       if (recognition && voiceListening) recognition.stop();
       voiceListening = false;
-      els.voicePanel.classList.remove("listening");
-      els.voiceSupport.textContent = recognition ? "Voice ready" : "Voice unavailable";
+      setVoiceUiState(false, message);
+    }
+
+    function setVoiceUiState(isListening, message) {
+      els.voicePanel.classList.toggle("listening", isListening);
+      els.mobileMic.classList.toggle("mic-listening", isListening);
+      els.mobileMic.textContent = isListening ? "Stop" : "Mic";
+      els.mobileMic.setAttribute("aria-pressed", String(isListening));
+      els.mobileMic.setAttribute("aria-label", isListening ? "Stop listening" : "Start microphone");
+      els.voiceSupport.textContent = isListening ? "Listening" : (recognition ? "Voice ready" : "Voice unavailable");
       els.voiceStatus.textContent = message;
     }
 
