@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "stoploop-v0.3.10";
+const CACHE_NAME = "stoploop-v0.4.0";
 const APP_SHELL = [
   "./",
   "./index.html",

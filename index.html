@@ -290,6 +290,26 @@
       line-height: 1.4;
     }
     .notice strong { color: var(--cp-text); }
+    .waze-card {
+      border: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+      border-radius: 16px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .waze-card strong {
+      display: block;
+      font-size: 18px;
+    }
+    .waze-actions {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+    .waze-actions button {
+      min-height: 44px;
+    }
     .mobile-round-card {
       display: none;
       border: 1px solid var(--cp-border);
@@ -515,6 +535,10 @@
       padding: 8px 10px;
       background: var(--cp-bg-elevated);
       border-radius: 0.625rem;
+    }
+    .route-step.active-route-step {
+      background: var(--cp-accent-soft);
+      border-color: var(--cp-accent);
     }
     .route-step strong { display: block; }
     .route-step span {
@@ -869,7 +893,7 @@
             <div>
               <div class="brand-line">
                 <h1>StopLoop</h1>
-                <span class="version">v0.3.10</span>
+                <span class="version">v0.4.0</span>
               </div>
             </div>
           </div>
@@ -1026,6 +1050,20 @@
             <button id="download-csv" type="button">Download CSV</button>
             <a id="maps-link" href="#" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
           </div>
+          <div id="waze-card" class="waze-card">
+            <div class="row">
+              <div>
+                <strong id="waze-stop-title">Next stop</strong>
+                <div id="waze-stop-detail" class="muted">Optimize your route, then open one stop at a time in Waze.</div>
+              </div>
+              <span id="waze-stop-pill" class="pill">Waze</span>
+            </div>
+            <div class="waze-actions">
+              <button id="waze-prev" type="button">Previous</button>
+              <button id="waze-open" class="primary" type="button">Open in Waze</button>
+              <button id="waze-skip" type="button">Skip</button>
+            </div>
+          </div>
           <div id="route-empty" class="empty">Add at least three stops, then optimize.</div>
           <ol id="route-list" class="route-list"></ol>
         </div>
@@ -1045,6 +1083,10 @@
     const MAX_STOPS = 20;
     const STORAGE_KEY = "route-optimizer-stops";
     const FAVORITES_KEY = "route-optimizer-favorites";
+    const ROUTE_PROGRESS_KEY = "route-optimizer-active-route-index";
+    const ROUTE_ORDER_KEY = "route-optimizer-route-order";
+    const OPTIMIZED_KEY = "route-optimizer-optimized";
+    const WAZE_PENDING_KEY = "route-optimizer-pending-waze";
     const demoStops = [
       { name: "Microsoft Redmond Campus", lat: 47.6423, lng: -122.1368 },
       { name: "Bellevue Downtown", lat: 47.6101, lng: -122.2015 },
@@ -1058,8 +1100,11 @@
 
     let stops = readStops();
     let favorites = readFavorites();
-    let routeOrder = [];
-    let optimized = false;
+    let routeOrder = readRouteOrder(stops);
+    let optimized = localStorage.getItem(OPTIMIZED_KEY) === "true";
+    let activeRouteIndex = readActiveRouteIndex();
+    let pendingWazeIndex = null;
+    let pendingWazeAt = 0;
     let roadMap = null;
     let markerLayer = null;
     let routeLayer = null;
@@ -1096,6 +1141,13 @@
       copyRoute: document.getElementById("copy-route"),
       downloadCsv: document.getElementById("download-csv"),
       mapsLink: document.getElementById("maps-link"),
+      wazeCard: document.getElementById("waze-card"),
+      wazeStopTitle: document.getElementById("waze-stop-title"),
+      wazeStopDetail: document.getElementById("waze-stop-detail"),
+      wazeStopPill: document.getElementById("waze-stop-pill"),
+      wazePrev: document.getElementById("waze-prev"),
+      wazeOpen: document.getElementById("waze-open"),
+      wazeSkip: document.getElementById("waze-skip"),
       favoriteName: document.getElementById("favorite-name"),
       favoriteAddress: document.getElementById("favorite-address"),
       favoriteCount: document.getElementById("favorite-count"),
@@ -1150,6 +1202,9 @@
     els.importStops.addEventListener("click", () => importStops());
     els.copyRoute.addEventListener("click", () => copyItinerary());
     els.downloadCsv.addEventListener("click", () => downloadCsv());
+    els.wazePrev.addEventListener("click", () => moveActiveStop(-1));
+    els.wazeSkip.addEventListener("click", () => moveActiveStop(1));
+    els.wazeOpen.addEventListener("click", () => openActiveStopInWaze());
     els.saveFavorite.addEventListener("click", () => saveFavorite());
     els.saveCurrentFavorite.addEventListener("click", () => saveCurrentAddressAsFavorite());
     els.mobileMic.addEventListener("click", () => toggleVoiceMode());
@@ -1161,6 +1216,10 @@
     els.voiceStop.addEventListener("click", () => stopVoiceMode("Voice mode stopped."));
     els.voiceAdd.addEventListener("click", () => addVoiceCandidate());
     els.voiceRetry.addEventListener("click", () => clearVoiceCandidate("Say the address again."));
+    window.addEventListener("focus", () => maybeAdvanceAfterWaze());
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") maybeAdvanceAfterWaze();
+    });
     setupVoiceMode();
 
     function setupVoiceMode() {
@@ -1218,8 +1277,8 @@
         return;
       }
       if (view === "route") {
-        els.mobilePrimaryAction.textContent = "Open route in Maps";
-        els.mobilePrimaryAction.disabled = stops.length < 2;
+        els.mobilePrimaryAction.textContent = "Open in Waze";
+        els.mobilePrimaryAction.disabled = !getActiveWazeStop();
         return;
       }
       document.body.dataset.mobileView = "build";
@@ -1237,7 +1296,7 @@
         return;
       }
       if (view === "route") {
-        if (els.mapsLink.href) window.open(els.mapsLink.href, "_blank", "noopener,noreferrer");
+        openActiveStopInWaze();
         return;
       }
       setMobileView("build");
@@ -1558,11 +1617,13 @@
       if (stops.length < 3) {
         routeOrder = naturalOrder();
         optimized = false;
+        saveRouteState();
         return;
       }
       const openRoute = els.mode.value === "open";
       routeOrder = twoOpt(nearestNeighbor(openRoute), openRoute);
       optimized = true;
+      saveRouteState();
     }
 
     function optimizeRoundTrip(shouldScroll = true) {
@@ -1642,6 +1703,7 @@
       renderFavorites();
       renderMap();
       renderRoute();
+      renderWazeCard();
       renderStats();
       renderMapsLink();
       els.optimize.disabled = stops.length < 3;
@@ -1795,6 +1857,7 @@
 
     function renderRoute() {
       const routeStops = routeOrder.map(index => stops[index]).filter(Boolean);
+      normalizeActiveRouteIndex(routeStops);
       els.routeList.innerHTML = "";
       els.routeEmpty.classList.toggle("hidden", routeStops.length >= 3);
       routeStops.forEach((stop, index) => {
@@ -1802,12 +1865,110 @@
         const leg = prev ? distanceMiles(prev, stop) : 0;
         const li = document.createElement("li");
         li.className = "route-step";
+        if (index === activeRouteIndex) li.classList.add("active-route-step");
         const label = index === 0 ? "Start" : (index === routeStops.length - 1 && stop === routeStops[0] ? "Return" : `Stop ${index}`);
         li.innerHTML = `<strong></strong><span></span>`;
         li.querySelector("strong").textContent = `${label}: ${stop.name}`;
         li.querySelector("span").textContent = index === 0 ? "Begin here." : `${leg.toFixed(1)} mi from previous stop.`;
         els.routeList.appendChild(li);
       });
+    }
+
+    function getRouteStops() {
+      return (routeOrder.length ? routeOrder : naturalOrder()).map(index => stops[index]).filter(Boolean);
+    }
+
+    function getWazeStops() {
+      const routeStops = getRouteStops();
+      if (!routeStops.length) return [];
+      return routeStops.filter((stop, index) => index > 0 && !(index === routeStops.length - 1 && stop === routeStops[0]));
+    }
+
+    function normalizeActiveRouteIndex(routeStops = getRouteStops()) {
+      if (routeStops.length < 2) {
+        activeRouteIndex = 0;
+      } else {
+        const lastNavigable = routeStops.length > 1 && routeStops[routeStops.length - 1] === routeStops[0]
+          ? routeStops.length - 2
+          : routeStops.length - 1;
+        activeRouteIndex = Math.min(Math.max(1, activeRouteIndex || 1), Math.max(1, lastNavigable));
+      }
+      localStorage.setItem(ROUTE_PROGRESS_KEY, String(activeRouteIndex));
+    }
+
+    function getActiveWazeStop() {
+      const routeStops = getRouteStops();
+      normalizeActiveRouteIndex(routeStops);
+      return routeStops[activeRouteIndex] || null;
+    }
+
+    function renderWazeCard() {
+      const stop = getActiveWazeStop();
+      const routeStops = getRouteStops();
+      const total = getWazeStops().length;
+      els.wazeCard.classList.toggle("hidden", !stop);
+      els.wazeOpen.disabled = !stop;
+      els.wazePrev.disabled = activeRouteIndex <= 1;
+      els.wazeSkip.disabled = !stop || activeRouteIndex >= routeStops.length - 1 || routeStops[activeRouteIndex + 1] === routeStops[0];
+      if (!stop) {
+        els.wazeStopTitle.textContent = "No Waze stop ready";
+        els.wazeStopDetail.textContent = "Optimize your route first.";
+        els.wazeStopPill.textContent = "Waze";
+        return;
+      }
+      els.wazeStopTitle.textContent = stop.name;
+      els.wazeStopDetail.textContent = "Open this stop in Waze. When you return, StopLoop advances to the next stop.";
+      els.wazeStopPill.textContent = `Stop ${Math.max(1, activeRouteIndex)} of ${Math.max(1, total)}`;
+    }
+
+    function moveActiveStop(delta) {
+      const routeStops = getRouteStops();
+      normalizeActiveRouteIndex(routeStops);
+      activeRouteIndex += delta;
+      normalizeActiveRouteIndex(routeStops);
+      render();
+    }
+
+    function wazeUrlForStop(stop) {
+      const url = new URL("https://waze.com/ul");
+      url.searchParams.set("ll", `${stop.lat},${stop.lng}`);
+      url.searchParams.set("navigate", "yes");
+      return url.toString();
+    }
+
+    function openActiveStopInWaze() {
+      const stop = getActiveWazeStop();
+      if (!stop) return;
+      pendingWazeIndex = activeRouteIndex;
+      pendingWazeAt = Date.now();
+      localStorage.setItem(WAZE_PENDING_KEY, JSON.stringify({ index: pendingWazeIndex, at: pendingWazeAt }));
+      saveRouteState();
+      window.location.href = wazeUrlForStop(stop);
+    }
+
+    function maybeAdvanceAfterWaze() {
+      if (pendingWazeIndex === null) {
+        try {
+          const pending = JSON.parse(localStorage.getItem(WAZE_PENDING_KEY) || "null");
+          if (pending && Number.isInteger(pending.index) && Number.isFinite(pending.at)) {
+            pendingWazeIndex = pending.index;
+            pendingWazeAt = pending.at;
+          }
+        } catch (error) {
+          localStorage.removeItem(WAZE_PENDING_KEY);
+        }
+      }
+      if (pendingWazeIndex === null || Date.now() - pendingWazeAt < 1000) return;
+      const routeStops = getRouteStops();
+      if (activeRouteIndex === pendingWazeIndex) {
+        activeRouteIndex += 1;
+        normalizeActiveRouteIndex(routeStops);
+        render();
+      }
+      pendingWazeIndex = null;
+      pendingWazeAt = 0;
+      localStorage.removeItem(WAZE_PENDING_KEY);
+      saveRouteState();
     }
 
     function renderMap() {
@@ -1962,7 +2123,14 @@
 
     function saveAndRender() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stops));
+      saveRouteState();
       render();
+    }
+
+    function saveRouteState() {
+      localStorage.setItem(ROUTE_ORDER_KEY, JSON.stringify(routeOrder));
+      localStorage.setItem(OPTIMIZED_KEY, String(optimized));
+      localStorage.setItem(ROUTE_PROGRESS_KEY, String(activeRouteIndex));
     }
 
     function saveFavorites() {
@@ -1989,6 +2157,19 @@
       }
     }
 
+    function readRouteOrder(currentStops) {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(ROUTE_ORDER_KEY) || "[]");
+        if (!Array.isArray(parsed)) return [];
+        const max = currentStops.length - 1;
+        const valid = parsed.every(index => Number.isInteger(index) && index >= 0 && index <= max);
+        return valid ? parsed : [];
+      } catch (error) {
+        console.warn("Could not restore route order.", error);
+        return [];
+      }
+    }
+
     function readFavorites() {
       try {
         const parsed = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
@@ -2004,6 +2185,11 @@
         console.warn("Could not restore favorites.", error);
         return [];
       }
+    }
+
+    function readActiveRouteIndex() {
+      const saved = Number.parseInt(localStorage.getItem(ROUTE_PROGRESS_KEY) || "1", 10);
+      return Number.isFinite(saved) && saved > 0 ? saved : 1;
     }
 
     function setTab(tab) {
