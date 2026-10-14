@@ -893,7 +893,7 @@
             <div>
               <div class="brand-line">
                 <h1>StopLoop</h1>
-                <span class="version">v0.4.0</span>
+                <span class="version">v0.4.1</span>
               </div>
             </div>
           </div>
@@ -1929,11 +1929,22 @@
       render();
     }
 
-    function wazeUrlForStop(stop) {
+    function wazeWebUrlForStop(stop) {
       const url = new URL("https://waze.com/ul");
       url.searchParams.set("ll", `${stop.lat},${stop.lng}`);
       url.searchParams.set("navigate", "yes");
       return url.toString();
+    }
+
+    function wazeAppUrlForStop(stop) {
+      const params = new URLSearchParams();
+      params.set("ll", `${stop.lat},${stop.lng}`);
+      params.set("navigate", "yes");
+      return `waze://?${params.toString()}`;
+    }
+
+    function wazeUrlForStop(stop) {
+      return wazeAppUrlForStop(stop);
     }
 
     function openActiveStopInWaze() {
@@ -1943,7 +1954,13 @@
       pendingWazeAt = Date.now();
       localStorage.setItem(WAZE_PENDING_KEY, JSON.stringify({ index: pendingWazeIndex, at: pendingWazeAt }));
       saveRouteState();
-      window.location.href = wazeUrlForStop(stop);
+      const launchedAt = Date.now();
+      window.location.href = wazeAppUrlForStop(stop);
+      window.setTimeout(() => {
+        if (document.visibilityState === "visible" && Date.now() - launchedAt < 2200) {
+          window.location.href = wazeWebUrlForStop(stop);
+        }
+      }, 1400);
     }
 
     function maybeAdvanceAfterWaze() {
