@@ -869,7 +869,7 @@
             <div>
               <div class="brand-line">
                 <h1>StopLoop</h1>
-                <span class="version">v0.3.9</span>
+                <span class="version">v0.3.10</span>
               </div>
             </div>
           </div>
@@ -1066,8 +1066,6 @@
     let recognition = null;
     let voiceCandidate = "";
     let voiceListening = false;
-    let voiceShouldListen = false;
-    let voiceRestartTimer = null;
     let lastVoicePhrase = "";
 
     const els = {
@@ -1186,26 +1184,9 @@
       };
       recognition.onend = () => {
         voiceListening = false;
-        if (voiceShouldListen) {
-          setVoiceUiState(true, "Still listening. Restarting microphone...");
-          clearTimeout(voiceRestartTimer);
-          voiceRestartTimer = window.setTimeout(() => {
-            if (!voiceShouldListen || voiceListening) return;
-            try {
-              recognition.start();
-            } catch (error) {
-              voiceShouldListen = false;
-              setVoiceUiState(false, "Voice mode paused. Tap Mic to try again.");
-            }
-          }, 350);
-          return;
-        }
-        setVoiceUiState(false, els.voiceSupport.textContent === "Listening" ? "Voice ready" : els.voiceStatus.textContent);
+        setVoiceUiState(false, "Mic stopped. Tap Mic to listen again.");
       };
       recognition.onerror = event => {
-        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          voiceShouldListen = false;
-        }
         els.voiceStatus.textContent = `Voice error: ${event.error}. Typed entry still works.`;
         speak("Voice mode hit an error.");
       };
@@ -1264,18 +1245,15 @@
 
     function startVoiceMode() {
       if (!recognition || voiceListening) return;
-      voiceShouldListen = true;
-      clearTimeout(voiceRestartTimer);
       try {
         recognition.start();
       } catch (error) {
-        voiceShouldListen = false;
         els.voiceStatus.textContent = "Voice mode could not start. Stop and try again.";
       }
     }
 
     function toggleVoiceMode() {
-      if (voiceShouldListen || voiceListening) {
+      if (voiceListening) {
         stopVoiceMode("Voice mode stopped.");
         return;
       }
@@ -1283,8 +1261,6 @@
     }
 
     function stopVoiceMode(message = "Voice mode stopped.") {
-      voiceShouldListen = false;
-      clearTimeout(voiceRestartTimer);
       if (recognition && voiceListening) recognition.stop();
       voiceListening = false;
       setVoiceUiState(false, message);

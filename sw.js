@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "stoploop-v0.3.9";
+﻿const CACHE_NAME = "stoploop-v0.3.10";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -29,5 +29,6 @@ self.addEventListener("fetch", event => {
     )
   );
 });
+
 
 
