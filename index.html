@@ -860,7 +860,7 @@
             <div>
               <div class="brand-line">
                 <h1>StopLoop</h1>
-                <span class="version">v0.3.6</span>
+                <span class="version">v0.3.7</span>
               </div>
             </div>
           </div>
@@ -1264,6 +1264,7 @@
       }
       if (interim && !finalText) {
         els.voiceTranscript.textContent = interim;
+        mirrorVoiceToAddressInput(interim);
         return;
       }
       if (!finalText) return;
@@ -1325,11 +1326,25 @@
         return;
       }
       voiceCandidate = cleanedPhrase;
+      mirrorVoiceToAddressInput(voiceCandidate);
       els.voiceTranscript.textContent = voiceCandidate;
       els.voiceStatus.textContent = `Heard: "${voiceCandidate}". Say yes to add it, or retry.`;
       els.voiceAdd.disabled = false;
       els.voiceRetry.disabled = false;
       speak(`I heard ${voiceCandidate}. Say yes to add it, or retry.`);
+    }
+
+    function mirrorVoiceToAddressInput(text) {
+      const phrase = cleanVoicePhrase(text);
+      if (!phrase) return;
+      const normalized = phrase.toLowerCase().replace(/[.?!]+$/g, "");
+      const commands = new Set([
+        "yes", "yeah", "yep", "add it", "add this", "add address", "correct",
+        "no", "retry", "try again", "cancel", "undo", "undo last", "remove last",
+        "optimize", "optimize route", "clear route", "clear all", "done", "stop listening"
+      ]);
+      if (commands.has(normalized) || normalized.startsWith("favorite ") || normalized.startsWith("add favorite ")) return;
+      els.name.value = phrase;
     }
 
     function cleanVoicePhrase(phrase) {
