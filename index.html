@@ -418,6 +418,11 @@
       border: 1px solid var(--cp-border);
       background: var(--cp-bg-elevated);
       border-radius: 0.625rem;
+      cursor: pointer;
+    }
+    .stop-card.is-start {
+      background: var(--cp-accent-soft);
+      border-color: var(--cp-accent);
     }
     .badge {
       display: inline-grid;
@@ -893,7 +898,7 @@
             <div>
               <div class="brand-line">
                 <h1>StopLoop</h1>
-                <span class="version">v0.4.1</span>
+                <span class="version">v0.4.2</span>
               </div>
             </div>
           </div>
@@ -1717,18 +1722,22 @@
       stops.forEach((stop, index) => {
         const savedFavorite = findFavoriteForStop(stop);
         const li = document.createElement("li");
-        li.className = "stop-card";
+        li.className = `stop-card${index === 0 ? " is-start" : ""}`;
         li.innerHTML = `
           <span class="badge">${index === 0 ? "S" : index + 1}</span>
           <div>
             <div class="stop-title"></div>
-            <div class="stop-meta">${index === 0 ? "Starting point" : `Stop ${index + 1}`}</div>
+            <div class="stop-meta">${index === 0 ? "Starting point" : "Tap to set as start"}</div>
           </div>
           <div class="mini-actions">
             <button type="button" class="star-button${savedFavorite ? " is-favorite" : ""}" data-stop-action="favorite" aria-label="${savedFavorite ? "Remove favorite" : "Save stop as favorite"}" title="${savedFavorite ? "Remove favorite" : "Save as favorite"}">${savedFavorite ? "★" : "☆"}</button>
             <button type="button" data-stop-action="delete" aria-label="Delete stop">X</button>
           </div>`;
         li.querySelector(".stop-title").textContent = stop.name;
+        li.addEventListener("click", event => {
+          if (event.target.closest(".mini-actions")) return;
+          setStartStop(index);
+        });
         li.querySelector('[data-stop-action="favorite"]').addEventListener("click", () => toggleStopFavorite(index));
         li.querySelector('[data-stop-action="delete"]').addEventListener("click", () => deleteStop(index));
         els.stopList.appendChild(li);
@@ -2075,6 +2084,23 @@
       routeOrder = naturalOrder();
       optimized = false;
       saveAndRender();
+    }
+
+    function setStartStop(index) {
+      if (index <= 0 || index >= stops.length) return;
+      const [selected] = stops.splice(index, 1);
+      stops.unshift(selected);
+      routeOrder = naturalOrder();
+      optimized = false;
+      activeRouteIndex = stops.length > 1 ? 1 : 0;
+      pendingWazeIndex = null;
+      pendingWazeAt = 0;
+      localStorage.removeItem(WAZE_PENDING_KEY);
+      saveAndRender();
+      els.geocodeStatus.textContent = `Starting point set: ${selected.name}`;
+      window.setTimeout(() => {
+        if (els.geocodeStatus.textContent === `Starting point set: ${selected.name}`) els.geocodeStatus.textContent = "";
+      }, 2500);
     }
 
     function deleteStop(index) {
